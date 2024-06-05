@@ -247,3 +247,5 @@ __pycache__/
 
 # Template custom files
 scripts/
+
+obj/
