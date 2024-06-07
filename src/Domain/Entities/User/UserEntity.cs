@@ -1,11 +1,10 @@
 ﻿using Domain.Common;
-using Domain.ValueObjects;
+using Domain.Entities.User.ValueObjects;
 
-namespace Domain;
+namespace Domain.Entities.User;
 
-public class User : BaseEntity
+public class UserEntity : BaseEntity
 {
-    public Username Username { get; set; } = default!;
     public Email Email { get; set; } = default!;
     public FirstName FirstName { get; set; } = default!;
     public LastName LastName { get; set; } = default!;
