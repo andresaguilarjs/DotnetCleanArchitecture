@@ -1,4 +1,4 @@
-﻿namespace Infrastructure.Database.UnitOfWork;
+﻿namespace Infrastructure.Database.Common;
 
 public interface IUnitOfWork
 {

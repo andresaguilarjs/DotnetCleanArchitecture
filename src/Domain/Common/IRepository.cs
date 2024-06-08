@@ -2,9 +2,9 @@ namespace Domain.Common;
 
 public interface IRepository<T> where T : BaseEntity
 {
-    Task<T> GetByIdAsync(Guid id);
-    Task<IReadOnlyList<T>> ListAllAsync();
-    Task<T> AddAsync(T entity);
-    Task UpdateAsync(T entity);
-    Task DeleteAsync(T entity);
+    Task<T> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<T>> ListAllAsync(CancellationToken cancellationToken = default);
+    Task<T> AddAsync(T entity, CancellationToken cancellationToken = default);
+    Task UpdateAsync(T entity, CancellationToken cancellationToken = default);
+    Task DeleteAsync(T entity, CancellationToken cancellationToken = default);
 }

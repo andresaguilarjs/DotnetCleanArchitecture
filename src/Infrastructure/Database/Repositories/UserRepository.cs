@@ -8,7 +8,7 @@ namespace Infrastructure.Database.Repositories
     public sealed class UserRepository : Repository<UserEntity>, IUserRepository
     {
 
-        public UserRepository(ApplicationDbContext context) : base(context)
+        public UserRepository(ApplicationDbContext context, IUnitOfWork unitOfWork) : base(context, unitOfWork)
         {
         }
     }

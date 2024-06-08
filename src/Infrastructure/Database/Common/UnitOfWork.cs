@@ -1,5 +1,5 @@
 ﻿
-namespace Infrastructure.Database.UnitOfWork;
+namespace Infrastructure.Database.Common;
 
 public sealed class UnitOfWork : IUnitOfWork
 {
