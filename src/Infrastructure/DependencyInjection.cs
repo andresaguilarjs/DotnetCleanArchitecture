@@ -18,7 +18,9 @@ public static class DependencyInjection
     {
         services.AddDbContext<ApplicationDbContext>(options =>
         {
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
+            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
+                options => options.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)
+            );
         });
 
         services.AddScoped<IUserRepository, UserRepository>();
