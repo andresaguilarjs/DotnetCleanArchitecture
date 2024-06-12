@@ -1,4 +1,5 @@
 using Domain.Common;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Database.Common;
 
@@ -24,9 +25,16 @@ public class Repository<TEntity> : IRepository<TEntity> where TEntity : BaseEnti
         throw new NotImplementedException();
     }
 
-    public Task<TEntity> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<TEntity> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var result = await Context.Set<TEntity>().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+        if (result is null)
+        {
+            throw new Exception($"{typeof(TEntity).Name} with {id} was not found.");
+        }
+
+        return result;
     }
 
     public Task<IReadOnlyList<TEntity>> ListAllAsync(CancellationToken cancellationToken = default)

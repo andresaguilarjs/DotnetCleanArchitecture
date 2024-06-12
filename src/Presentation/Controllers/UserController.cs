@@ -1,4 +1,7 @@
-﻿using Application.Users.Commands.CreateUser;
+﻿using Application;
+using Application.Users.Commands.CreateUser;
+using Domain.Common;
+using Domain.Entities.User;
 using Domain.Entities.User.ValueObjects;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -13,22 +16,49 @@ public class UserController : ApiController
     {
     }
 
-    [HttpGet]
-    public async Task<IActionResult> Get()
+    [HttpGet("{id}")]
+    public async Task<IActionResult> Get(Guid id)
     {
-        return Ok("ok");
+        var readUserQuery = new ReadUserQuery(id);
+        Result<UserEntity> result = await Sender.Send(readUserQuery);
+        return Ok(result);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Post()
+    public async Task<IActionResult> Post(UserRequest userRequest)
     {
-        var command = new CreateUserCommand(
-            new Email("john.doe@mailinator.com"),
-            new FirstName("John"),
-            new LastName("Doe")
+        var createUserCommand = new CreateUserCommand(
+            new Email(userRequest.Email),
+            new FirstName(userRequest.FirstName),
+            new LastName(userRequest.LastName)
         );
 
-        var result = await Sender.Send(command);
+        Result result = await Sender.Send(createUserCommand);
+        return Ok(result);
+    }
+
+    [HttpPut]
+    public async Task<IActionResult> Put(UserRequest userRequest)
+    {
+        if (userRequest.Id is null) {
+            return BadRequest("Id is required");
+        }
+
+        var updateUserCommand = new UpdateUserCommand(
+            userRequest.Id.Value,
+            new Email(userRequest.Email),
+            new FirstName(userRequest.FirstName),
+            new LastName(userRequest.LastName)
+        );
+
+        Result result = await Sender.Send(updateUserCommand);
+        return Ok(result);
+    }
+
+    [HttpDelete]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        Result result = await Sender.Send(new DeleteUserCommand(id));
         return Ok(result);
     }
 }
