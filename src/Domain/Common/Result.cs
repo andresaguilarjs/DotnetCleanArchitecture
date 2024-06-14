@@ -29,5 +29,5 @@ public class Result<TResult>
     }
 
     public static Result<TResult> Success(TResult value) => new Result<TResult>(true, string.Empty, value);
-    public static Result<TResult> Failure(string error) => new Result<TResult>(false, error, default);
+    public static Result<TResult> Failure(string error) => new Result<TResult>(false, error, default!);
 }
