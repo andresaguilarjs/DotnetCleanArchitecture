@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace Infrastructure;
+namespace Infrastructure.Database.DBContext;
 
 public class ApplicationDbContext : DbContext
 {

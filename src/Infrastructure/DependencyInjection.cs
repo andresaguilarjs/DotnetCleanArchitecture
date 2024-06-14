@@ -1,5 +1,6 @@
 ﻿using Domain.Entities.User.Interfaces;
 using Infrastructure.Database.Common;
+using Infrastructure.Database.DBContext;
 using Infrastructure.Database.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;

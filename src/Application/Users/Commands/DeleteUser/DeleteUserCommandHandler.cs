@@ -1,8 +1,9 @@
-﻿using Domain.Common;
+﻿using Application.Abstractions.Messaging;
+using Domain.Common;
 using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
 
-namespace Application;
+namespace Application.Users.Commands.DeleteUser;
 
 internal sealed class DeleteUserCommandHandler : ICommandHandler<DeleteUserCommand>
 {

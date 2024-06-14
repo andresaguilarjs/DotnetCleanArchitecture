@@ -1,6 +1,6 @@
 ﻿using Application.Abstractions.Messaging;
 using Domain.Entities.User;
 
-namespace Application;
+namespace Application.Users.Queries.ReadUser;
 
 public record ReadUserQuery(Guid Id) : IQuery<UserEntity>;

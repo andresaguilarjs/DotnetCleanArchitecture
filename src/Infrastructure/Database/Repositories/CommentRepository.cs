@@ -1,6 +1,7 @@
 ﻿using Domain.Entities.Comment;
 using Domain.Entities.Comment.Interfaces;
 using Infrastructure.Database.Common;
+using Infrastructure.Database.DBContext;
 
 namespace Infrastructure.Database.Repositories;
 

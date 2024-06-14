@@ -1,4 +1,6 @@
 ﻿
+using Infrastructure.Database.DBContext;
+
 namespace Infrastructure.Database.Common;
 
 public sealed class UnitOfWork : IUnitOfWork

@@ -1,4 +1,5 @@
-﻿using Domain.Entities.User.ValueObjects;
+﻿using Application.Abstractions.Messaging;
+using Domain.Entities.User.ValueObjects;
 
 namespace Application.Users.Commands.CreateUser;
 

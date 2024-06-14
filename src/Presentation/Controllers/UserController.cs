@@ -1,5 +1,8 @@
 ﻿using Application;
 using Application.Users.Commands.CreateUser;
+using Application.Users.Commands.DeleteUser;
+using Application.Users.Commands.UpdateUser;
+using Application.Users.Queries.ReadUser;
 using Domain.Common;
 using Domain.Entities.User;
 using Domain.Entities.User.ValueObjects;

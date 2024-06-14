@@ -1,8 +1,9 @@
-﻿using Domain.Common;
+﻿using Application.Abstractions.Messaging;
+using Domain.Common;
 using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
 
-namespace Application.Users.Commands.ReadUser;
+namespace Application.Users.Queries.ReadUser;
 
 internal sealed class ReadUserQueryHandler : IQueryHandler<ReadUserQuery, UserEntity>
 {
