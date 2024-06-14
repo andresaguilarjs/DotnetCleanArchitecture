@@ -2,6 +2,7 @@
 using Application.Users.Commands.CreateUser;
 using Application.Users.Commands.DeleteUser;
 using Application.Users.Commands.UpdateUser;
+using Application.Users.Queries.ReadList;
 using Application.Users.Queries.ReadUser;
 using Domain.Common;
 using Domain.Entities.User;
@@ -17,6 +18,13 @@ public class UserController : ApiController
 {
     public UserController(ISender sender) : base(sender)
     {
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Get()
+    {
+        Result<IReadOnlyList<UserEntity>> result = await Sender.Send(new ReadUserListQuery());
+        return Ok(result);
     }
 
     [HttpGet("{id}")]
