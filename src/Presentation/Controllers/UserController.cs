@@ -58,7 +58,7 @@ public class UserController : ApiController
         return Ok(result);
     }
 
-    [HttpDelete]
+    [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
         Result result = await Sender.Send(new DeleteUserCommand(id));

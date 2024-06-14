@@ -23,36 +23,28 @@ public class Repository<TEntity> : IRepository<TEntity> where TEntity : BaseEnti
 
     public async Task<TEntity> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
-        TEntity currentEntity = await Context.Set<TEntity>()
-            .FirstOrDefaultAsync(x => x.Id == entity.Id)
-            ?? throw new Exception($"{typeof(TEntity).Name} with {entity.Id} was not found.");
-
+        TEntity currentEntity = await GetByIdAsync(entity.Id);
         Context.Entry(currentEntity).CurrentValues.SetValues(entity);
         await UnitOfWork.SaveChangesAsync(cancellationToken);
         return currentEntity;
     }
 
-    public Task DeleteAsync(TEntity entity, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        TEntity entity = await GetByIdAsync(id);
+        Context.Set<TEntity>().Remove(entity);
+        await UnitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<TEntity> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await Context.Set<TEntity>().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-
-        if (result is null)
-        {
-            throw new Exception($"{typeof(TEntity).Name} with {id} was not found.");
-        }
-
-        return result;
+         return await Context.Set<TEntity>()
+            .FirstOrDefaultAsync(x => x.Id == id)
+            ?? throw new Exception($"{typeof(TEntity).Name} with {id} was not found.");
     }
 
-    public Task<IReadOnlyList<TEntity>> ListAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<TEntity>> ListAllAsync(CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return await Context.Set<TEntity>().ToListAsync(cancellationToken);
     }
-
-
 }
