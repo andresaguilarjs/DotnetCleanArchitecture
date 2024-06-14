@@ -16,9 +16,20 @@ public class Repository<TEntity> : IRepository<TEntity> where TEntity : BaseEnti
 
     public async Task<TEntity> AddAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
-        Context.Set<TEntity>().Add(entity);
+        await Context.Set<TEntity>().AddAsync(entity);
         await UnitOfWork.SaveChangesAsync(cancellationToken);
         return entity;
+    }
+
+    public async Task<TEntity> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
+    {
+        TEntity currentEntity = await Context.Set<TEntity>()
+            .FirstOrDefaultAsync(x => x.Id == entity.Id)
+            ?? throw new Exception($"{typeof(TEntity).Name} with {entity.Id} was not found.");
+
+        Context.Entry(currentEntity).CurrentValues.SetValues(entity);
+        await UnitOfWork.SaveChangesAsync(cancellationToken);
+        return currentEntity;
     }
 
     public Task DeleteAsync(TEntity entity, CancellationToken cancellationToken = default)
@@ -43,8 +54,5 @@ public class Repository<TEntity> : IRepository<TEntity> where TEntity : BaseEnti
         throw new NotImplementedException();
     }
 
-    public Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
+
 }
