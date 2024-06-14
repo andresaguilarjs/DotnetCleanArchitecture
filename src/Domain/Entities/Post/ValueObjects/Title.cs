@@ -1,3 +1,6 @@
 ﻿namespace Domain.Entities.Post.ValueObjects;
 
-public record class Title(string Value);
+/// <summary>
+/// Represents the title of a post.
+/// </summary>
+public record Title(string Value);

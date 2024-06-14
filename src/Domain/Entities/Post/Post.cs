@@ -1,7 +1,7 @@
-﻿using Domain.Common;
-using Domain.Entities.User;
+﻿using Domain.Entities.User;
 using Domain.Entities.Post.ValueObjects;
 using Domain.Entities.Comment;
+using Domain.Abstractions;
 
 namespace Domain.Entities.Post;
 

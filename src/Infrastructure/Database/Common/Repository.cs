@@ -1,4 +1,5 @@
-using Domain.Common;
+using Domain.Abstractions;
+using Domain.Interfaces;
 using Infrastructure.Database.DBContext;
 using Microsoft.EntityFrameworkCore;
 

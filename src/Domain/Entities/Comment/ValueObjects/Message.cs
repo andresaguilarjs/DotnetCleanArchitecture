@@ -1,3 +1,6 @@
 ﻿namespace Domain.Entities.Comment.ValueObjects;
 
-public record class Message(string Value);
+/// <summary>
+/// Represents a message value object for a comment.
+/// </summary>
+public record Message(string Value);

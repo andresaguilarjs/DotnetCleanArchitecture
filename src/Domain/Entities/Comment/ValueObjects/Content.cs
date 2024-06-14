@@ -1,3 +1,6 @@
 ﻿namespace Domain.Entities.Comment.ValueObjects;
 
-public record class Content(string Value);
+/// <summary>
+/// Represents the content of a comment.
+/// </summary>
+public record Content(string Value);

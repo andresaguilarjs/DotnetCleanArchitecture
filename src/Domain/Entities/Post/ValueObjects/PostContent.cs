@@ -1,3 +1,6 @@
 ﻿namespace Domain.Entities.Post.ValueObjects;
 
-public record class PostContent(string Value);
+/// <summary>
+/// Represents the content of a post.
+/// </summary>
+public record PostContent(string Value);
