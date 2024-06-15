@@ -20,11 +20,24 @@ public abstract class BaseEntity
     /// </summary>
     public DateTime LastUpdatedAt { get; private set; }
 
+    /// <summary>
+    /// Contains a flag indicating whether the entity is deleted.
+    /// </summary>
+    public bool IsDeleted { get; private set; }
+
     public BaseEntity()
     {
         CreatedAt = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Marks the entity as deleted.
+    /// </summary>
+    public void Delete()
+    {
+        IsDeleted = true;
+        RefreshUpdateAt();
+    }
 
     /// <summary>
     /// Refreshes the LastUpdatedAt property with the current UTC date and time.

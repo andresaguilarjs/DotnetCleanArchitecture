@@ -40,12 +40,14 @@ public class Repository<TEntity> : IRepository<TEntity> where TEntity : BaseEnti
     public async Task<TEntity> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
          return await Context.Set<TEntity>()
-            .FirstOrDefaultAsync(x => x.Id == id)
+            .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted, cancellationToken)
             ?? throw new Exception($"{typeof(TEntity).Name} with {id} was not found.");
     }
 
     public async Task<IReadOnlyList<TEntity>> ListAllAsync(CancellationToken cancellationToken = default)
     {
-        return await Context.Set<TEntity>().ToListAsync(cancellationToken);
+        return await Context.Set<TEntity>()
+            .Where(x => !x.IsDeleted)
+            .ToListAsync(cancellationToken);
     }
 }
