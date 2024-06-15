@@ -23,9 +23,7 @@ internal sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserComma
             return Result.Failure("User not found.");
         }
 
-        user.Email = request.Email;
-        user.FirstName = request.FirstName;
-        user.LastName = request.LastName;
+        user.Update(request.Email, request.FirstName, request.LastName);
 
         await _userRepository.UpdateAsync(user);
         return Result.Success();

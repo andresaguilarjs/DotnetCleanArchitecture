@@ -17,11 +17,7 @@ internal sealed class CrateUserCommandHandler : ICommandHandler<CreateUserComman
 
     public async Task<Result> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {
-        var user = new UserEntity(){
-            Email = request.Email,
-            FirstName = request.FirstName,
-            LastName = request.LastName
-        };
+        UserEntity user = UserEntity.Create(request.Email, request.FirstName, request.LastName);
 
         await _userRepository.AddAsync(user);
 

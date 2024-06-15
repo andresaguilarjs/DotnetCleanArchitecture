@@ -24,7 +24,7 @@ public class UserController : ApiController
     public async Task<IActionResult> Get()
     {
         Result<IReadOnlyList<UserEntity>> result = await Sender.Send(new ReadUserListQuery());
-        return Ok(result);
+        return Ok(result.Value);
     }
 
     [HttpGet("{id}")]
@@ -32,7 +32,7 @@ public class UserController : ApiController
     {
         var readUserQuery = new ReadUserQuery(id);
         Result<UserEntity> result = await Sender.Send(readUserQuery);
-        return Ok(result);
+        return Ok(result.Value);
     }
 
     [HttpPost]
