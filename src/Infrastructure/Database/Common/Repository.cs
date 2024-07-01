@@ -33,7 +33,7 @@ public class Repository<TEntity> : IRepository<TEntity> where TEntity : BaseEnti
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         TEntity entity = await GetByIdAsync(id);
-        Context.Set<TEntity>().Remove(entity);
+        entity.Delete();
         await UnitOfWork.SaveChangesAsync(cancellationToken);
     }
 
