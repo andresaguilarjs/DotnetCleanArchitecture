@@ -6,7 +6,7 @@ namespace Domain.Entities.User;
 /// <summary>
 /// Represents a user entity.
 /// </summary>
-public class UserEntity : BaseEntity
+public sealed class UserEntity : BaseEntity
 {
     /// <summary>
     /// Gets or sets the email of the user.
@@ -26,7 +26,7 @@ public class UserEntity : BaseEntity
     /// <summary>
     /// Initializes a new instance of the <see cref="UserEntity"/> class.
     /// </summary>
-    private UserEntity(Email email, FirstName firstName, LastName lastName)
+    private UserEntity(Email email, FirstName firstName, LastName lastName) : base()
     {
         Email = email;
         FirstName = firstName;
