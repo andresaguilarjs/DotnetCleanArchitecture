@@ -32,6 +32,11 @@ public class UserController : ApiController
     {
         var readUserQuery = new ReadUserQuery(id);
         Result<UserEntity> result = await Sender.Send(readUserQuery);
+
+        if (result.IsFailure)
+        {
+            return NotFound(result.Error);
+        }
         return Ok(result.Value);
     }
 

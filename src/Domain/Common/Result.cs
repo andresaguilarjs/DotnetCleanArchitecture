@@ -1,33 +1,90 @@
-namespace Domain.Common;
-
-public class Result
+namespace Domain.Common
 {
-    public bool IsSuccess { get; }
-    public string Error { get; }
-
-    private Result(bool isSuccess, string error)
+    /// <summary>
+    /// Represents the result of an operation that can either succeed or fail.
+    /// </summary>
+    public sealed class Result
     {
-        IsSuccess = isSuccess;
-        Error = error;
+        /// <summary>
+        /// Gets a value indicating whether the operation was successful.
+        /// </summary>
+        public bool IsSuccess { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the operation failed.
+        /// </summary>
+        public bool IsFailure => !IsSuccess;
+
+        /// <summary>
+        /// Gets the error associated with the result, if the operation failed.
+        /// </summary>
+        public Error Error { get; }
+
+        private Result(bool isSuccess, Error error)
+        {
+            IsSuccess = isSuccess;
+            Error = error;
+        }
+
+        /// <summary>
+        /// Creates a new successful result.
+        /// </summary>
+        /// <returns>A new instance of <see cref="Result"/> representing a successful operation.</returns>
+        public static Result Success() => new Result(true, Error.None);
+
+        /// <summary>
+        /// Creates a new failed result with the specified error.
+        /// </summary>
+        /// <param name="error">The error associated with the failed operation.</param>
+        /// <returns>A new instance of <see cref="Result"/> representing a failed operation.</returns>
+        public static Result Failure(Error error) => new Result(false, error);
     }
 
-    public static Result Success() => new Result(true, string.Empty);
-    public static Result Failure(string error) => new Result(false, error);
-}
-
-public class Result<TResult>
-{
-    public bool IsSuccess { get; }
-    public string Error { get; }
-    public TResult Value { get; }
-
-    private Result(bool isSuccess, string error, TResult value)
+    /// <summary>
+    /// Represents the result of an operation that can either succeed or fail, with a value.
+    /// </summary>
+    /// <typeparam name="TResult">The type of the value associated with the result.</typeparam>
+    public sealed class Result<TResult>
     {
-        IsSuccess = isSuccess;
-        Error = error;
-        Value = value;
-    }
+        /// <summary>
+        /// Gets a value indicating whether the operation was successful.
+        /// </summary>
+        public bool IsSuccess { get; }
 
-    public static Result<TResult> Success(TResult value) => new Result<TResult>(true, string.Empty, value);
-    public static Result<TResult> Failure(string error) => new Result<TResult>(false, error, default!);
+        /// <summary>
+        /// Gets a value indicating whether the operation failed.
+        /// </summary>
+        public bool IsFailure => !IsSuccess;
+
+        /// <summary>
+        /// Gets the error associated with the result, if the operation failed.
+        /// </summary>
+        public Error Error { get; }
+
+        /// <summary>
+        /// Gets the value associated with the result, if the operation succeeded.
+        /// </summary>
+        public TResult Value { get; }
+
+        private Result(bool isSuccess, Error error, TResult value)
+        {
+            IsSuccess = isSuccess;
+            Error = error;
+            Value = value;
+        }
+
+        /// <summary>
+        /// Creates a new successful result with the specified value.
+        /// </summary>
+        /// <param name="value">The value associated with the successful operation.</param>
+        /// <returns>A new instance of <see cref="Result{TResult}"/> representing a successful operation.</returns>
+        public static Result<TResult> Success(TResult value) => new Result<TResult>(true, Error.None, value);
+
+        /// <summary>
+        /// Creates a new failed result with the specified error.
+        /// </summary>
+        /// <param name="error">The error associated with the failed operation.</param>
+        /// <returns>A new instance of <see cref="Result{TResult}"/> representing a failed operation.</returns>
+        public static Result<TResult> Failure(Error error) => new Result<TResult>(false, error, default!);
+    }
 }

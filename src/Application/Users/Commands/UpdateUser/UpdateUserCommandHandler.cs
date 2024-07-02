@@ -18,9 +18,9 @@ internal sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserComma
     {
         UserEntity? user = await _userRepository.GetByIdAsync(request.Id, cancellationToken);
 
-        if (user == null)
+        if (user is null)
         {
-            return Result.Failure("User not found.");
+            return UserErrors.UserNotFound(request.Id);
         }
 
         user.Update(request.Email, request.FirstName, request.LastName);
