@@ -20,7 +20,7 @@ internal sealed class ReadUserQueryHandler : IQueryHandler<ReadUserQuery, UserEn
 
         if (user is null)
         {
-            return Result<UserEntity>.Failure(UserErrors.UserNotFound(request.Id));
+            return UserErrors.NotFound(request.Id);
         }
 
         return Result<UserEntity>.Success(user);

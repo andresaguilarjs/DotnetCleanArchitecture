@@ -67,8 +67,8 @@ public class UserController : ApiController
             new LastName(userRequest.LastName)
         );
 
-        Result result = await Sender.Send(updateUserCommand);
-        return Ok(result);
+        Result<UserEntity> result = await Sender.Send(updateUserCommand);
+        return Ok(result.Value);
     }
 
     [HttpDelete("{id}")]

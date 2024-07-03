@@ -59,14 +59,14 @@ namespace Domain.Common
         /// <summary>
         /// Gets the error associated with the result, if the operation failed.
         /// </summary>
-        public Error Error { get; }
+        public Error<TResult> Error { get; }
 
         /// <summary>
         /// Gets the value associated with the result, if the operation succeeded.
         /// </summary>
         public TResult Value { get; }
 
-        private Result(bool isSuccess, Error error, TResult value)
+        private Result(bool isSuccess, Error<TResult> error, TResult value)
         {
             IsSuccess = isSuccess;
             Error = error;
@@ -78,13 +78,13 @@ namespace Domain.Common
         /// </summary>
         /// <param name="value">The value associated with the successful operation.</param>
         /// <returns>A new instance of <see cref="Result{TResult}"/> representing a successful operation.</returns>
-        public static Result<TResult> Success(TResult value) => new Result<TResult>(true, Error.None, value);
+        public static Result<TResult> Success(TResult value) => new Result<TResult>(true, Error<TResult>.None, value);
 
         /// <summary>
         /// Creates a new failed result with the specified error.
         /// </summary>
         /// <param name="error">The error associated with the failed operation.</param>
         /// <returns>A new instance of <see cref="Result{TResult}"/> representing a failed operation.</returns>
-        public static Result<TResult> Failure(Error error) => new Result<TResult>(false, error, default!);
+        public static Result<TResult> Failure(Error<TResult> error) => new Result<TResult>(false, error, default!);
     }
 }
