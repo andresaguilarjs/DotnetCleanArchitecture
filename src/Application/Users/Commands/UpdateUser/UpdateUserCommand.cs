@@ -6,4 +6,4 @@ using MediatR;
 
 namespace Application.Users.Commands.UpdateUser;
 
-public record UpdateUserCommand(Guid Id, Email Email, FirstName FirstName, LastName LastName) : ICommand<UserEntity>;
+public record UpdateUserCommand(Guid Id, Email Email, FirstName FirstName, LastName LastName) : ICommand<UserDTO>;

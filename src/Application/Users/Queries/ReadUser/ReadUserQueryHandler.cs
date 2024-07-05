@@ -5,7 +5,7 @@ using Domain.Entities.User.Interfaces;
 
 namespace Application.Users.Queries.ReadUser;
 
-internal sealed class ReadUserQueryHandler : IQueryHandler<ReadUserQuery, UserEntity>
+internal sealed class ReadUserQueryHandler : IQueryHandler<ReadUserQuery, UserDTO>
 {
     private readonly IUserRepository _userRepository;
 
@@ -14,15 +14,15 @@ internal sealed class ReadUserQueryHandler : IQueryHandler<ReadUserQuery, UserEn
         _userRepository = userRepository;
     }
 
-    public async Task<Result<UserEntity>> Handle(ReadUserQuery request, CancellationToken cancellationToken)
+    public async Task<Result<UserDTO>> Handle(ReadUserQuery request, CancellationToken cancellationToken)
     {
         UserEntity? user = await _userRepository.GetByIdAsync(request.Id);
 
         if (user is null)
         {
-            return UserErrors.NotFound(request.Id);
+            return UserErrors<UserDTO>.NotFound(request.Id);;
         }
 
-        return Result<UserEntity>.Success(user);
+        return Result<UserDTO>.Success(UserMapper.Map(user));
     }
 }

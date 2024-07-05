@@ -1,11 +1,11 @@
 ﻿using Application;
+using Application.Users;
 using Application.Users.Commands.CreateUser;
 using Application.Users.Commands.DeleteUser;
 using Application.Users.Commands.UpdateUser;
 using Application.Users.Queries.ReadList;
 using Application.Users.Queries.ReadUser;
 using Domain.Common;
-using Domain.Entities.User;
 using Domain.Entities.User.ValueObjects;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -23,7 +23,7 @@ public class UserController : ApiController
     [HttpGet]
     public async Task<IActionResult> Get()
     {
-        Result<IReadOnlyList<UserEntity>> result = await Sender.Send(new ReadUserListQuery());
+        Result<IEnumerable<UserDTO>> result = await Sender.Send(new ReadUserListQuery());
         return Ok(result.Value);
     }
 
@@ -31,7 +31,7 @@ public class UserController : ApiController
     public async Task<IActionResult> Get(Guid id)
     {
         var readUserQuery = new ReadUserQuery(id);
-        Result<UserEntity> result = await Sender.Send(readUserQuery);
+        Result<UserDTO> result = await Sender.Send(readUserQuery);
 
         if (result.IsFailure)
         {
@@ -67,7 +67,7 @@ public class UserController : ApiController
             new LastName(userRequest.LastName)
         );
 
-        Result<UserEntity> result = await Sender.Send(updateUserCommand);
+        Result<UserDTO> result = await Sender.Send(updateUserCommand);
         return Ok(result.Value);
     }
 
