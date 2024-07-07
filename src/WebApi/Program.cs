@@ -1,4 +1,5 @@
 using Application;
+using Application.Extensions;
 using Infrastructure;
 using Presentation;
 
@@ -15,6 +16,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddPresentation();
 
 var app = builder.Build();
+app.UseCustomMiddleware();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

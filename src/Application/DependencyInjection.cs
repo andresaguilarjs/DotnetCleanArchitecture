@@ -1,3 +1,4 @@
+using Application.Middlewares;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Application;
@@ -14,6 +15,8 @@ public static class DependencyInjection
         {
             configuration.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
         });
+
+        services.AddTransient<ExceptionHanddlerMiddleware>();
         return services;
     }
 }
