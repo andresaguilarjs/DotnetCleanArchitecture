@@ -49,8 +49,12 @@ public class UserController : ApiController
             new LastName(userRequest.LastName)
         );
 
-        Result result = await Sender.Send(createUserCommand);
-        return Ok(result);
+        Result<UserDTO> result = await Sender.Send(createUserCommand);
+        if (result.IsSuccess) {
+            return CreatedAtAction(nameof(Get), new { id = result.Value.Id }, result.Value);
+        }
+
+        return BadRequest(result.Error);
     }
 
     [HttpPut]

@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Application.Users.Commands.CreateUser;
 
-internal sealed class CrateUserCommandHandler : ICommandHandler<CreateUserCommand>
+internal sealed class CrateUserCommandHandler : ICommandHandler<CreateUserCommand, UserDTO>
 {
     private readonly IUserRepository _userRepository;
 
@@ -15,12 +15,12 @@ internal sealed class CrateUserCommandHandler : ICommandHandler<CreateUserComman
         _userRepository = userRepository;
     }
 
-    public async Task<Result> Handle(CreateUserCommand request, CancellationToken cancellationToken)
+    public async Task<Result<UserDTO>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {
         UserEntity user = UserEntity.Create(request.Email, request.FirstName, request.LastName);
 
         await _userRepository.AddAsync(user);
 
-        return Result.Success();
+        return Result<UserDTO>.Success(UserMapper.Map(user));
     }
 }
