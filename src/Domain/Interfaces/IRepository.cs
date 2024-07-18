@@ -22,7 +22,7 @@ public interface IRepository<T> where T : BaseEntity
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the list of entities.</returns>
-    Task<IReadOnlyList<T>> ListAllAsync(CancellationToken cancellationToken = default);
+    Task<Result<IReadOnlyList<T>>> ListAllAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds a new entity to the repository.

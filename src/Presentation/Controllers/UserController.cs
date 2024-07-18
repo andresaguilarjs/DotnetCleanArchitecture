@@ -23,7 +23,7 @@ public class UserController : ApiController
     [HttpGet]
     public async Task<IActionResult> Get()
     {
-        Result<IEnumerable<UserDTO>> result = await Sender.Send(new ReadUserListQuery());
+        Result<IList<UserDTO>> result = await Sender.Send(new ReadUserListQuery());
         return Ok(result.Value);
     }
 

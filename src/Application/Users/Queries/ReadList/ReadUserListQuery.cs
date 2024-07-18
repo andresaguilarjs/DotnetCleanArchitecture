@@ -3,4 +3,4 @@ using Domain.Entities.User;
 
 namespace Application.Users.Queries.ReadList;
 
-public class ReadUserListQuery : IQuery<IEnumerable<UserDTO>>;
+public class ReadUserListQuery : IQuery<IList<UserDTO>>;

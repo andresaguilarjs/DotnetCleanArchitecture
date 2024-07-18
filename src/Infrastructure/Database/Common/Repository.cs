@@ -51,10 +51,12 @@ public class Repository<TEntity> : IRepository<TEntity> where TEntity : BaseEnti
         return Result<TEntity>.Success(result);
     }
 
-    public async Task<IReadOnlyList<TEntity>> ListAllAsync(CancellationToken cancellationToken = default)
+    public async Task<Result<IReadOnlyList<TEntity>>> ListAllAsync(CancellationToken cancellationToken = default)
     {
-        return await Context.Set<TEntity>()
+        IReadOnlyList<TEntity> entities = await Context.Set<TEntity>()
             .Where(x => !x.IsDeleted)
             .ToListAsync(cancellationToken);
+
+        return Result<IReadOnlyList<TEntity>>.Success(entities);
     }
 }

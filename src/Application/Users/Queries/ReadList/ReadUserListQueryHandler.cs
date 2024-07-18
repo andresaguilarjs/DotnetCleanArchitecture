@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Application.Users.Queries.ReadList;
 
-internal sealed class ReadUserListQueryHandler : IRequestHandler<ReadUserListQuery, Result<IEnumerable<UserDTO>>>
+internal sealed class ReadUserListQueryHandler : IRequestHandler<ReadUserListQuery, Result<IList<UserDTO>>>
 {
     private readonly IUserRepository _userRepository;
 
@@ -14,9 +14,15 @@ internal sealed class ReadUserListQueryHandler : IRequestHandler<ReadUserListQue
         _userRepository = userRepository;
     }
 
-    public async Task<Result<IEnumerable<UserDTO>>> Handle(ReadUserListQuery request, CancellationToken cancellationToken)
+    public async Task<Result<IList<UserDTO>>> Handle(ReadUserListQuery request, CancellationToken cancellationToken)
     {
-        IReadOnlyList<UserEntity> users = await _userRepository.ListAllAsync();
-        return Result<IEnumerable<UserDTO>>.Success(UserMapper.Map(users));
+        Result<IReadOnlyList<UserEntity>> users = await _userRepository.ListAllAsync();
+
+        if (users.IsFailure)
+        {
+            return Result<IList<UserDTO>>.Failure(UserMapper.Map(users.Errors).ToList());
+        }
+
+        return Result<IList<UserDTO>>.Success(UserMapper.Map(users.Value.ToList()));
     }
 }
