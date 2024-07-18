@@ -1,4 +1,6 @@
 using Domain.Abstractions;
+using Domain.Common;
+using Domain.Entities.User;
 using Domain.Interfaces;
 using Infrastructure.Database.DBContext;
 using Microsoft.EntityFrameworkCore;
@@ -37,11 +39,16 @@ public class Repository<TEntity> : IRepository<TEntity> where TEntity : BaseEnti
         await UnitOfWork.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<TEntity> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Result<TEntity>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-         return await Context.Set<TEntity>()
-            .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted, cancellationToken)
-            ?? throw new Exception($"{typeof(TEntity).Name} with {id} was not found.");
+        TEntity? result = await Context.Set<TEntity>().FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted, cancellationToken);
+        if (result is null)
+        {
+            List<Error<TEntity>> errors = new List<Error<TEntity>> { UserErrors<TEntity>.NotFound(id) };
+            return Result<TEntity>.Failure(errors);
+        }
+
+        return Result<TEntity>.Success(result);
     }
 
     public async Task<IReadOnlyList<TEntity>> ListAllAsync(CancellationToken cancellationToken = default)

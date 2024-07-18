@@ -35,7 +35,7 @@ public class UserController : ApiController
 
         if (result.IsFailure)
         {
-            return NotFound(result.Error);
+            return NotFound(result.Errors);
         }
         return Ok(result.Value);
     }
@@ -44,7 +44,7 @@ public class UserController : ApiController
     public async Task<IActionResult> Post(UserRequest userRequest)
     {
         var createUserCommand = new CreateUserCommand(
-            new Email(userRequest.Email),
+            Email.Create(userRequest.Email),
             new FirstName(userRequest.FirstName),
             new LastName(userRequest.LastName)
         );
@@ -54,7 +54,7 @@ public class UserController : ApiController
             return CreatedAtAction(nameof(Get), new { id = result.Value.Id }, result.Value);
         }
 
-        return BadRequest(result.Error);
+        return BadRequest(result.Errors);
     }
 
     [HttpPut]
@@ -66,7 +66,7 @@ public class UserController : ApiController
 
         var updateUserCommand = new UpdateUserCommand(
             userRequest.Id.Value,
-            new Email(userRequest.Email),
+            Email.Create(userRequest.Email),
             new FirstName(userRequest.FirstName),
             new LastName(userRequest.LastName)
         );

@@ -17,7 +17,7 @@ public class UserConfiguration : IEntityTypeConfiguration<UserEntity>
         builder.Property(x => x.Email)
             .IsRequired()
             .HasMaxLength(100)
-            .HasConversion(email => email.Value, email => new Email(email));
+            .HasConversion(email => email.Value, email => Email.Create(email));
         builder.HasIndex(x => x.Email).IsUnique();
 
         builder.Property(x => x.FirstName)

@@ -19,4 +19,14 @@ public sealed class UserMapper
     {
         return userEntities.Select(Map);
     }
+
+    public static Error<UserDTO> Map(Error<UserEntity> error)
+    {
+        return new Error<UserDTO>(error.code, error.description);
+    }
+
+    public static IList<Error<UserDTO>> Map(IList<Error<UserEntity>> errors)
+    {
+        return errors.Select(Map).ToList();
+    }
 }

@@ -59,17 +59,17 @@ namespace Domain.Common
         /// <summary>
         /// Gets the error associated with the result, if the operation failed.
         /// </summary>
-        public Error<TResult> Error { get; }
+        public IList<Error<TResult>> Errors { get; }
 
         /// <summary>
         /// Gets the value associated with the result, if the operation succeeded.
         /// </summary>
         public TResult Value { get; }
 
-        private Result(bool isSuccess, Error<TResult> error, TResult value)
+        private Result(bool isSuccess, IList<Error<TResult>> errors, TResult value)
         {
             IsSuccess = isSuccess;
-            Error = error;
+            Errors = errors;
             Value = value;
         }
 
@@ -78,13 +78,19 @@ namespace Domain.Common
         /// </summary>
         /// <param name="value">The value associated with the successful operation.</param>
         /// <returns>A new instance of <see cref="Result{TResult}"/> representing a successful operation.</returns>
-        public static Result<TResult> Success(TResult value) => new Result<TResult>(true, Error<TResult>.None, value);
+        public static Result<TResult> Success(TResult value) => new Result<TResult>(true, new List<Error<TResult>>(), value);
 
         /// <summary>
         /// Creates a new failed result with the specified error.
         /// </summary>
-        /// <param name="error">The error associated with the failed operation.</param>
+        /// <param name="errors">A list of errors associated with the failed operation.</param>
         /// <returns>A new instance of <see cref="Result{TResult}"/> representing a failed operation.</returns>
-        public static Result<TResult> Failure(Error<TResult> error) => new Result<TResult>(false, error, default!);
+        public static Result<TResult> Failure(IList<Error<TResult>> errors) => new Result<TResult>(false, errors, default!);
+
+        /// <summary>
+        /// Implicitly converts a <see cref="Result{TResult}"/> to its value.
+        /// </summary>
+        /// <param name="result"></param>
+        public static implicit operator TResult(Result<TResult> result) => result.Value;
     }
 }

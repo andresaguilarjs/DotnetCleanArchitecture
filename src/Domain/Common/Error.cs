@@ -36,5 +36,8 @@ public sealed record Error<T>(string code, string description)
     /// </summary>
     /// <param name="error">The error to convert.</param>
     /// <returns>A new instance of <see cref="Result{T}"/> representing a failed operation.</returns>
-    public static implicit operator Result<T>(Error<T> error) => Result<T>.Failure(error);
+    public static implicit operator Result<T>(Error<T> error)  {
+        List<Error<T>> errors = new List<Error<T>> { error };
+        return Result<T>.Failure(errors);
+    }
 }

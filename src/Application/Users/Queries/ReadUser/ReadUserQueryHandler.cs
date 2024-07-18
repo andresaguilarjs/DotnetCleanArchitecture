@@ -16,11 +16,11 @@ internal sealed class ReadUserQueryHandler : IQueryHandler<ReadUserQuery, UserDT
 
     public async Task<Result<UserDTO>> Handle(ReadUserQuery request, CancellationToken cancellationToken)
     {
-        UserEntity? user = await _userRepository.GetByIdAsync(request.Id);
+        Result<UserEntity> user = await _userRepository.GetByIdAsync(request.Id);
 
-        if (user is null)
+        if (user.IsFailure)
         {
-            return UserErrors<UserDTO>.NotFound(request.Id);;
+            return Result<UserDTO>.Failure(UserMapper.Map(user.Errors));
         }
 
         return Result<UserDTO>.Success(UserMapper.Map(user));

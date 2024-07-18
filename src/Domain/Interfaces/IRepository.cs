@@ -1,4 +1,5 @@
 using Domain.Abstractions;
+using Domain.Common;
 
 namespace Domain.Interfaces;
 
@@ -14,7 +15,7 @@ public interface IRepository<T> where T : BaseEntity
     /// <param name="id">The unique identifier of the entity.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the entity.</returns>
-    Task<T> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Result<T>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves a list of all entities.
