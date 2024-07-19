@@ -16,11 +16,11 @@ public record Email {
 
     public static Result<Email> Create(string email) {
         if (string.IsNullOrWhiteSpace(email)) {
-            return UserErrors<Email>.EmptyEmail();
+            return EmptyEmail();
         }
 
         if (!IsValid(email)) {
-            return UserErrors<Email>.InvalidEmail();
+            return InvalidEmail();
         }
 
         return Result<Email>.Success(new Email(email));
@@ -28,5 +28,21 @@ public record Email {
 
     public static bool IsValid(string email) {
         return new EmailAddressAttribute().IsValid(email);
+    }
+
+    private static Result<Email> InvalidEmail() {
+        return Result<Email>.Failure(
+            new List<Error>() {
+                UserErrors.InvalidEmail()
+            }
+        );
+    }
+
+    private static Result<Email> EmptyEmail() {
+        return Result<Email>.Failure(
+            new List<Error>() {
+                UserErrors.EmptyEmail()
+            }
+        );
     }
 };

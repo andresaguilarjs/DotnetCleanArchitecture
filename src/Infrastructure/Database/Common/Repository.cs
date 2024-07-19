@@ -44,7 +44,7 @@ public class Repository<TEntity> : IRepository<TEntity> where TEntity : BaseEnti
         TEntity? result = await Context.Set<TEntity>().FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted, cancellationToken);
         if (result is null)
         {
-            List<Error<TEntity>> errors = new List<Error<TEntity>> { UserErrors<TEntity>.NotFound(id) };
+            List<Error> errors = new List<Error> { GenericErrors.NotFound(id, typeof(TEntity)) };
             return Result<TEntity>.Failure(errors);
         }
 

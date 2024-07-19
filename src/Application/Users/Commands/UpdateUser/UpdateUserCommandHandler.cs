@@ -21,7 +21,7 @@ internal sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserComma
 
         if (user is null)
         {
-            return UserErrors<UserDTO>.NotFound(request.Id);
+            return Result<UserDTO>.Failure( new List<Error>() { GenericErrors.NotFound(request.Id, typeof(UserDTO)) });
         }
 
         user.Update(request.Email, request.FirstName, request.LastName);

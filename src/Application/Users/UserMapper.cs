@@ -19,27 +19,4 @@ public sealed class UserMapper
     {
         return userEntities.Select(Map).ToList();
     }
-
-    public static Error<UserDTO> Map(Error<UserEntity> error)
-    {
-        return new Error<UserDTO>(error.code, error.description);
-    }
-
-    public static IList<Error<UserDTO>> Map(IList<Error<UserEntity>> errors)
-    {
-        return errors.Select(Map).ToList();
-    }
-
-    public static IEnumerable<Error<IList<UserDTO>>> Map(IList<Error<IReadOnlyList<UserEntity>>>? errors)
-    {
-        if (errors is null)
-        {
-            yield break;
-        }
-
-        foreach (Error<IReadOnlyList<UserEntity>> error in errors)
-        {
-            yield return new Error<IList<UserDTO>>(error.code, error.description);
-        }
-    }
 }

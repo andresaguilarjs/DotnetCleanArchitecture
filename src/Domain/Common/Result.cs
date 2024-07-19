@@ -59,14 +59,14 @@ namespace Domain.Common
         /// <summary>
         /// Gets the error associated with the result, if the operation failed.
         /// </summary>
-        public IList<Error<TResult>> Errors { get; }
+        public IList<Error> Errors { get; }
 
         /// <summary>
         /// Gets the value associated with the result, if the operation succeeded.
         /// </summary>
         public TResult Value { get; }
 
-        private Result(bool isSuccess, IList<Error<TResult>> errors, TResult value)
+        private Result(bool isSuccess, IList<Error> errors, TResult value)
         {
             IsSuccess = isSuccess;
             Errors = errors;
@@ -78,14 +78,14 @@ namespace Domain.Common
         /// </summary>
         /// <param name="value">The value associated with the successful operation.</param>
         /// <returns>A new instance of <see cref="Result{TResult}"/> representing a successful operation.</returns>
-        public static Result<TResult> Success(TResult value) => new Result<TResult>(true, new List<Error<TResult>>(), value);
+        public static Result<TResult> Success(TResult value) => new Result<TResult>(true, new List<Error>(), value);
 
         /// <summary>
         /// Creates a new failed result with the specified error.
         /// </summary>
         /// <param name="errors">A list of errors associated with the failed operation.</param>
         /// <returns>A new instance of <see cref="Result{TResult}"/> representing a failed operation.</returns>
-        public static Result<TResult> Failure(IList<Error<TResult>> errors) => new Result<TResult>(false, errors, default!);
+        public static Result<TResult> Failure(IList<Error> errors) => new Result<TResult>(false, errors, default!);
 
         /// <summary>
         /// Implicitly converts a <see cref="Result{TResult}"/> to its value.

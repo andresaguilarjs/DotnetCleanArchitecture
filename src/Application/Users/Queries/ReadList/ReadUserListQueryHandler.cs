@@ -20,7 +20,7 @@ internal sealed class ReadUserListQueryHandler : IRequestHandler<ReadUserListQue
 
         if (users.IsFailure)
         {
-            return Result<IList<UserDTO>>.Failure(UserMapper.Map(users.Errors).ToList());
+            return Result<IList<UserDTO>>.Failure(users.Errors);
         }
 
         return Result<IList<UserDTO>>.Success(UserMapper.Map(users.Value.ToList()));

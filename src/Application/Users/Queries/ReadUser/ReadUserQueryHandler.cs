@@ -20,7 +20,7 @@ internal sealed class ReadUserQueryHandler : IQueryHandler<ReadUserQuery, UserDT
 
         if (user.IsFailure)
         {
-            return Result<UserDTO>.Failure(UserMapper.Map(user.Errors));
+            return Result<UserDTO>.Failure(user.Errors);
         }
 
         return Result<UserDTO>.Success(UserMapper.Map(user));
