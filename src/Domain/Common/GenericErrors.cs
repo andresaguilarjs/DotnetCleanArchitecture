@@ -19,7 +19,7 @@ public sealed class GenericErrors
     /// <returns></returns>
     public static Error NotFound(Guid resourceId, Type objectType) {
         string typeName = GetTypeName(objectType);
-        return new Error($"{typeName}_not_found", $"The {typeName} with ID '{resourceId}' was not found.");
+        return new Error(ErrorCodes.NotFound, $"The {typeName} with ID '{resourceId}' was not found.");
     }
 
     /// <summary>

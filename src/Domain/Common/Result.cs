@@ -18,26 +18,26 @@ namespace Domain.Common
         /// <summary>
         /// Gets the error associated with the result, if the operation failed.
         /// </summary>
-        public Error Error { get; }
+        public IList<Error> Errors { get; }
 
-        private Result(bool isSuccess, Error error)
+        private Result(bool isSuccess, IList<Error> errors)
         {
             IsSuccess = isSuccess;
-            Error = error;
+            Errors = errors;
         }
 
         /// <summary>
         /// Creates a new successful result.
         /// </summary>
         /// <returns>A new instance of <see cref="Result"/> representing a successful operation.</returns>
-        public static Result Success() => new Result(true, Error.None);
+        public static Result Success() => new Result(true, new List<Error>() { Error.None });
 
         /// <summary>
         /// Creates a new failed result with the specified error.
         /// </summary>
         /// <param name="error">The error associated with the failed operation.</param>
         /// <returns>A new instance of <see cref="Result"/> representing a failed operation.</returns>
-        public static Result Failure(Error error) => new Result(false, error);
+        public static Result Failure(Error error) => new Result(false, new List<Error>{ error });
     }
 
     /// <summary>

@@ -24,7 +24,7 @@ public class UserController : ApiController
     public async Task<IActionResult> Get()
     {
         Result<IList<UserDTO>> result = await Sender.Send(new ReadUserListQuery());
-        return Ok(result.Value);
+        return HandleResult<IList<UserDTO>>(result);
     }
 
     [HttpGet("{id}")]
@@ -32,12 +32,7 @@ public class UserController : ApiController
     {
         var readUserQuery = new ReadUserQuery(id);
         Result<UserDTO> result = await Sender.Send(readUserQuery);
-
-        if (result.IsFailure)
-        {
-            return NotFound(result.Errors);
-        }
-        return Ok(result.Value);
+        return HandleResult<UserDTO>(result);
     }
 
     [HttpPost]
@@ -50,11 +45,7 @@ public class UserController : ApiController
         );
 
         Result<UserDTO> result = await Sender.Send(createUserCommand);
-        if (result.IsSuccess) {
-            return CreatedAtAction(nameof(Get), new { id = result.Value.Id }, result.Value);
-        }
-
-        return BadRequest(result.Errors);
+        return HandleResult<UserDTO>(result, isCreation: true);
     }
 
     [HttpPut]
@@ -72,13 +63,13 @@ public class UserController : ApiController
         );
 
         Result<UserDTO> result = await Sender.Send(updateUserCommand);
-        return Ok(result.Value);
+        return HandleResult<UserDTO>(result);
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
         Result result = await Sender.Send(new DeleteUserCommand(id));
-        return Ok(result);
+        return HandleResult(result);
     }
 }

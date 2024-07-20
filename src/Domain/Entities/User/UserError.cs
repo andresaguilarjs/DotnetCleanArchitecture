@@ -8,6 +8,6 @@ namespace Domain.Entities.User;
 /// </summary>
 public class UserErrors
 {
-    public static Error EmptyEmail() => new Error("empty_email", "The email address is required.");
-    public static Error InvalidEmail() => new Error("invalid_email", "The email address is invalid.");
+    public static Error EmptyEmail() => new Error(ErrorCodes.ValidationError, "The email address is required.");
+    public static Error InvalidEmail() => new Error(ErrorCodes.ValidationError, "The email address is invalid.");
 }
