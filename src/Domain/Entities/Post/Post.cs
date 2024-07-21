@@ -12,4 +12,10 @@ public class PostEntity : BaseEntity
     public Guid AuthorId { get; set; }
     public UserEntity Author { get; set; } = default!;
     public List<CommentEntity> Comments { get; set; } = new();
+
+    public override void Delete()
+    {
+        base.IsDeleted = true;
+        RefreshUpdateAt();
+    }
 }

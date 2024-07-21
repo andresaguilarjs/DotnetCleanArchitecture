@@ -23,6 +23,15 @@ public sealed class GenericErrors
     }
 
     /// <summary>
+    /// Represents an error that occurs when a parameter is null or empty.
+    /// </summary>
+    /// <param name="parameterName"></param>
+    /// <returns></returns>
+    public static Error NullOrEmpty(string parameterName) {
+        return new Error(ErrorCodes.ValidationError, $"The parameter '{parameterName}' cannot be null or empty.");
+    }
+
+    /// <summary>
     /// Get the type name from the object type.
     /// It will remove the generic type name from the object type to prevent show the generic type name in the error message.
     /// </summary>

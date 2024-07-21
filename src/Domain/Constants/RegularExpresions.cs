@@ -13,5 +13,10 @@ namespace Domain.Constants
                 (?<=[A-Z])(?=[A-Z][a-z]) |
                 (?<=[^A-Z])(?=[A-Z]) |
                 (?<=[A-Za-z])(?=[^A-Za-z])";
+
+        /// <summary>
+        /// Represents a regular expression that matches capitalized words.
+        /// </summary>
+        public const string CapitalizedWords = @"(?<!^)(?=[A-Z])";
     }
 }

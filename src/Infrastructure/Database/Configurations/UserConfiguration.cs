@@ -23,12 +23,12 @@ public class UserConfiguration : IEntityTypeConfiguration<UserEntity>
         builder.Property(x => x.FirstName)
             .IsRequired()
             .HasMaxLength(100)
-            .HasConversion(firstName => firstName.Value, firstName => new FirstName(firstName));
+            .HasConversion(firstName => firstName.Value, firstName => FirstName.Create(firstName));
 
         builder.Property(x => x.LastName)
             .IsRequired()
             .HasMaxLength(100)
-            .HasConversion(lastName => lastName.Value, lastName => new LastName(lastName));
+            .HasConversion(lastName => lastName.Value, lastName => LastName.Create(lastName));
 
         builder.Property(x => x.CreatedAt).IsRequired();
 

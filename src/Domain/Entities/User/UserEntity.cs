@@ -58,4 +58,16 @@ public sealed class UserEntity : BaseEntity
         LastName = lastName;
         base.RefreshUpdateAt();
     }
+
+    /// <summary>
+    /// Marks the user entity as deleted.
+    /// Also update the email to something can not be repeated so the email can be available again to be used
+    /// and finally call RefreshUpdateAt, this is a way to have the date when the entity was deleted.
+    /// </summary>
+    public override void Delete()
+    {
+        base.IsDeleted = true;
+        this.Email = Email.Create($"{this.Id }-{this.Email.Value}-deleted");
+        RefreshUpdateAt();
+    }
 }

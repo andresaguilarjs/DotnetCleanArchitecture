@@ -38,11 +38,7 @@ public class UserController : ApiController
     [HttpPost]
     public async Task<IActionResult> Post(UserRequest userRequest)
     {
-        var createUserCommand = new CreateUserCommand(
-            Email.Create(userRequest.Email),
-            new FirstName(userRequest.FirstName),
-            new LastName(userRequest.LastName)
-        );
+        var createUserCommand = new CreateUserCommand(userRequest);
 
         Result<UserDTO> result = await Sender.Send(createUserCommand);
         return HandleResult<UserDTO>(result, isCreation: true);
@@ -55,12 +51,7 @@ public class UserController : ApiController
             return BadRequest("Id is required");
         }
 
-        var updateUserCommand = new UpdateUserCommand(
-            userRequest.Id.Value,
-            Email.Create(userRequest.Email),
-            new FirstName(userRequest.FirstName),
-            new LastName(userRequest.LastName)
-        );
+        var updateUserCommand = new UpdateUserCommand(userRequest);
 
         Result<UserDTO> result = await Sender.Send(updateUserCommand);
         return HandleResult<UserDTO>(result);

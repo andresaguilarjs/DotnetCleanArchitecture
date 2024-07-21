@@ -1,5 +1,6 @@
 using Application.Behaviors;
 using Application.Middlewares;
+using Domain.Entities.User.Services;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,6 +20,8 @@ public static class DependencyInjection
         });
 
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>));
+
+        services.AddScoped<UserService>();
 
         services.AddTransient<ExceptionHanddlerMiddleware>();
         return services;

@@ -23,7 +23,7 @@ public abstract class BaseEntity
     /// <summary>
     /// Contains a flag indicating whether the entity is deleted.
     /// </summary>
-    public bool IsDeleted { get; private set; }
+    public bool IsDeleted { get; protected set; }
 
     public BaseEntity()
     {
@@ -33,11 +33,7 @@ public abstract class BaseEntity
     /// <summary>
     /// Marks the entity as deleted.
     /// </summary>
-    public void Delete()
-    {
-        IsDeleted = true;
-        RefreshUpdateAt();
-    }
+    public abstract void Delete();
 
     /// <summary>
     /// Refreshes the LastUpdatedAt property with the current UTC date and time.

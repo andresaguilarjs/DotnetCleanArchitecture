@@ -52,4 +52,10 @@ public class CommentEntity : BaseEntity
     {
         return new CommentEntity(message, authorId, post);
     }
+
+    public override void Delete()
+    {
+        base.IsDeleted = true;
+        RefreshUpdateAt();
+    }
 }
