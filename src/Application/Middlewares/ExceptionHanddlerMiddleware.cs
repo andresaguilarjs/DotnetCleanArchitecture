@@ -9,6 +9,13 @@ namespace Application.Middlewares;
 /// </summary>
 public sealed class ExceptionHanddlerMiddleware : IMiddleware
 {
+    private readonly ILogger _logger;
+
+    public ExceptionHanddlerMiddleware(ILogger<ExceptionHanddlerMiddleware> logger)
+    {
+        _logger = logger;
+    }
+
     /// <summary>
     /// Invokes the middleware to handle exceptions.
     /// </summary>
@@ -19,7 +26,8 @@ public sealed class ExceptionHanddlerMiddleware : IMiddleware
     {
         try {
             await next(context);
-        } catch (Exception) {
+        } catch (Exception exception) {
+            _logger.LogError(exception, exception.Message);
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsync(JsonSerializer.Serialize(new { message = "Something went wrong. Try again later." }));
