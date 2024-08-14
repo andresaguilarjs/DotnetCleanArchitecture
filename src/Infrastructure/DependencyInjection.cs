@@ -2,6 +2,7 @@
 using Infrastructure.Database.Common;
 using Infrastructure.Database.DBContext;
 using Infrastructure.Database.Repositories;
+using Infrastructure.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,9 @@ public static class DependencyInjection
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        services.AddHealthChecks()
+            .AddCheck<SqlHealthCheck>("Sql Health Check");
 
         return services;
     }
