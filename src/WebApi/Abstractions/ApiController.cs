@@ -1,9 +1,9 @@
-﻿using Domain.Common;
+using Domain.Common;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
-namespace Presentation.Abstractions;
+namespace WebApi.Abstractions;
 
 [ApiController]
 public abstract class ApiController : ControllerBase

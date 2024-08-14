@@ -2,7 +2,7 @@ using Application;
 using Application.Extensions;
 using Infrastructure;
 using Infrastructure.HealthChecks;
-using Presentation;
+using WebApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +18,7 @@ builder.Services.AddPresentation();
 
 // Add services related to health checks
 builder.Services.AddHealthChecks()
-.AddCheck<SqlHealthCheck>("Sql Health Check");
+    .AddCheck<SqlHealthCheck>("Sql Health Check");
 
 var app = builder.Build();
 app.UseCustomMiddleware();

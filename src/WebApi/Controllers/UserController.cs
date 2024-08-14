@@ -1,4 +1,4 @@
-﻿using Application;
+using Application;
 using Application.Users;
 using Application.Users.Commands.CreateUser;
 using Application.Users.Commands.DeleteUser;
@@ -9,9 +9,9 @@ using Domain.Common;
 using Domain.Entities.User.ValueObjects;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Presentation.Abstractions;
+using WebApi.Abstractions;
 
-namespace Presentation.Controllers;
+namespace WebApi.Controllers;
 
 [Route("api/users")]
 public class UserController : ApiController
