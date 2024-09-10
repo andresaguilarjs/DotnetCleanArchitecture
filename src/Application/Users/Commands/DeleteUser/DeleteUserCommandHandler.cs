@@ -7,16 +7,16 @@ namespace Application.Users.Commands.DeleteUser;
 
 internal sealed class DeleteUserCommandHandler : ICommandHandler<DeleteUserCommand>
 {
-    private readonly IUserRepository _userRepository;
+    private readonly IUserCommandRepository _userCommandRepository;
 
-    public DeleteUserCommandHandler(IUserRepository userRepository)
+    public DeleteUserCommandHandler(IUserCommandRepository userCommandRepository)
     {
-        _userRepository = userRepository;
+        _userCommandRepository = userCommandRepository;
     }
 
     public async Task<Result> Handle(DeleteUserCommand request, CancellationToken cancellationToken)
     {
-        await _userRepository.DeleteAsync(request.Id, cancellationToken);
+        await _userCommandRepository.DeleteAsync(request.Id, cancellationToken);
         return Result.Success();
     }
 }

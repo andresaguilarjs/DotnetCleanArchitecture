@@ -7,36 +7,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Database.Common;
 
-public class Repository<TEntity> : IRepository<TEntity> where TEntity : BaseEntity
+public class QueryRepository<TEntity> : IQueryRepository<TEntity> where TEntity : BaseEntity
 {
     protected readonly ApplicationDbContext Context;
     protected readonly IUnitOfWork UnitOfWork;
-    public Repository(ApplicationDbContext context, IUnitOfWork unitOfWork)
+    public QueryRepository(ApplicationDbContext context, IUnitOfWork unitOfWork)
     {
         Context = context;
         UnitOfWork = unitOfWork;
-    }
-
-    public async Task<TEntity> AddAsync(TEntity entity, CancellationToken cancellationToken = default)
-    {
-        await Context.Set<TEntity>().AddAsync(entity);
-        await UnitOfWork.SaveChangesAsync(cancellationToken);
-        return entity;
-    }
-
-    public async Task<TEntity> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
-    {
-        TEntity currentEntity = await GetByIdAsync(entity.Id);
-        Context.Entry(currentEntity).CurrentValues.SetValues(entity);
-        await UnitOfWork.SaveChangesAsync(cancellationToken);
-        return currentEntity;
-    }
-
-    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        TEntity entity = await GetByIdAsync(id);
-        entity.Delete();
-        await UnitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<Result<TEntity>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

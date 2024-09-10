@@ -10,12 +10,14 @@ namespace Application.Users.Commands.UpdateUser;
 
 internal sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, UserDTO>
 {
-    private readonly IUserRepository _userRepository;
+    private readonly IUserCommandRepository _userCommandRepository;
+    private readonly IUserQueryRepository _userQueryRepository;
     private readonly UserService _userService;
 
-    public UpdateUserCommandHandler(IUserRepository userRepository, UserService userService)
+    public UpdateUserCommandHandler(IUserCommandRepository userRepository, IUserQueryRepository userQueryRepository, UserService userService)
     {
-        _userRepository = userRepository;
+        _userCommandRepository = userRepository;
+        _userQueryRepository = userQueryRepository;
         _userService = userService;
     }
 
@@ -26,7 +28,7 @@ internal sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserComma
             return Result<UserDTO>.Failure(new List<Error>() { GenericErrors.NullOrEmpty(nameof(request.UserRequest)) });
         }
 
-        Result<UserEntity> user = await _userRepository.GetByIdAsync((Guid)request.UserRequest.Id, cancellationToken);
+        Result<UserEntity> user = await _userQueryRepository.GetByIdAsync((Guid)request.UserRequest.Id, cancellationToken);
 
         if (user.IsFailure)
         {
@@ -40,7 +42,7 @@ internal sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserComma
             return Result<UserDTO>.Failure(user.Errors);
         }
 
-        await _userRepository.UpdateAsync(user);
+        await _userCommandRepository.UpdateAsync(user);
 
         return Result<UserDTO>.Success(UserMapper.Map(user));
     }

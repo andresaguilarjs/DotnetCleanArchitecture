@@ -5,7 +5,7 @@ using Infrastructure.Database.DBContext;
 
 namespace Infrastructure.Database.Repositories;
 
-public class PostRepository : Repository<PostEntity>, IPostRepository
+public class PostRepository : QueryRepository<PostEntity>, IPostRepository
 {
     public PostRepository(ApplicationDbContext context, IUnitOfWork unitOfWork) : base(context, unitOfWork)
     {

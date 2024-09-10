@@ -1,7 +1,8 @@
 ﻿using Domain.Entities.User.Interfaces;
 using Infrastructure.Database.Common;
 using Infrastructure.Database.DBContext;
-using Infrastructure.Database.Repositories;
+using Infrastructure.Database.Repositories.Command;
+using Infrastructure.Database.Repositories.Query;
 using Infrastructure.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -25,7 +26,8 @@ public static class DependencyInjection
             );
         });
 
-        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserQueryRepository, UserQueryRepository>();
+        services.AddScoped<IUserCommandRepository, UserCommandRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddHealthChecks()

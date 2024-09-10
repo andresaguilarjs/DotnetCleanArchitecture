@@ -10,11 +10,11 @@ namespace Domain.Entities.User.Services;
 /// </summary>
 public sealed class UserService
 {
-    private readonly IUserRepository UserRepository;
+    private readonly IUserQueryRepository _userQueryRepository;
 
-    public UserService(IUserRepository userRepository)
+    public UserService(IUserQueryRepository userQueryRepository)
     {
-        UserRepository = userRepository;
+        _userQueryRepository = userQueryRepository;
     }
 
     /// <summary>
@@ -30,7 +30,7 @@ public sealed class UserService
 
         IList<Error> errors = ValidateUserValueObjects(emailValue, firstNameValue, lastNameValue);
 
-        if (!isEmailAvailable(emailValue))
+        if (!IsEmailAvailable(emailValue))
         {
             errors.Add(UserErrors.EmailAlreadyInUse(email));
         }
@@ -128,7 +128,7 @@ public sealed class UserService
     {
         if (currentEmail != newEmail)
         {
-            return isEmailAvailable(newEmail);
+            return IsEmailAvailable(newEmail);
         }
 
         return true;
@@ -139,9 +139,9 @@ public sealed class UserService
     /// </summary>
     /// <param name="email"></param>
     /// <returns></returns>
-    private bool isEmailAvailable(Email email)
+    private bool IsEmailAvailable(Email email)
     {
-        Result<UserEntity> userByEmail = UserRepository.GetByEmailAsync(email).Result;
+        Result<UserEntity> userByEmail = _userQueryRepository.GetByEmailAsync(email).Result;
         return userByEmail.IsFailure;
     }
 }

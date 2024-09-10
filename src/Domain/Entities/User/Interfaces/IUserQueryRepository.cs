@@ -5,9 +5,9 @@ using Domain.Interfaces;
 namespace Domain.Entities.User.Interfaces;
 
 /// <summary>
-/// Represents a repository for managing user entities.
+/// Represents a repository for querying user entities.
 /// </summary>
-public interface IUserRepository : IRepository<UserEntity>
+public interface IUserQueryRepository : IQueryRepository<UserEntity>
 {
     /// <summary>
     /// Get a user entity by email.

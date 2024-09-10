@@ -5,6 +5,6 @@ namespace Domain.Entities.Post.Interfaces;
 /// <summary>
 /// Represents a repository for managing post entities.
 /// </summary>
-public interface IPostRepository : IRepository<PostEntity>
+public interface IPostRepository : IQueryRepository<PostEntity>
 {
 }

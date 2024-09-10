@@ -7,16 +7,16 @@ namespace Application.Users.Queries.ReadUser;
 
 internal sealed class ReadUserQueryHandler : IQueryHandler<ReadUserQuery, UserDTO>
 {
-    private readonly IUserRepository _userRepository;
+    private readonly IUserQueryRepository _userQueryRepository;
 
-    public ReadUserQueryHandler(IUserRepository userRepository)
+    public ReadUserQueryHandler(IUserQueryRepository userRepository)
     {
-        _userRepository = userRepository;
+        _userQueryRepository = userRepository;
     }
 
     public async Task<Result<UserDTO>> Handle(ReadUserQuery request, CancellationToken cancellationToken)
     {
-        Result<UserEntity> user = await _userRepository.GetByIdAsync(request.Id);
+        Result<UserEntity> user = await _userQueryRepository.GetByIdAsync(request.Id);
 
         if (user.IsFailure)
         {

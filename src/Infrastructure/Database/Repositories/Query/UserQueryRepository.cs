@@ -6,13 +6,13 @@ using Infrastructure.Database.Common;
 using Infrastructure.Database.DBContext;
 using Microsoft.EntityFrameworkCore;
 
-namespace Infrastructure.Database.Repositories;
+namespace Infrastructure.Database.Repositories.Query;
 
-public sealed class UserRepository : Repository<UserEntity>, IUserRepository
+public sealed class UserQueryRepository : QueryRepository<UserEntity>, IUserQueryRepository
 {
     private readonly DbSet<UserEntity> _userEntity;
 
-    public UserRepository(ApplicationDbContext context, IUnitOfWork unitOfWork) : base(context, unitOfWork)
+    public UserQueryRepository(ApplicationDbContext context, IUnitOfWork unitOfWork) : base(context, unitOfWork)
     {
         _userEntity = context.Set<UserEntity>();
     }

@@ -4,26 +4,11 @@ using Domain.Common;
 namespace Domain.Interfaces;
 
 /// <summary>
-/// Represents a generic repository interface for accessing data entities.
+/// Represents a generic repository interface for managing entities.
 /// </summary>
 /// <typeparam name="T">The type of the entity.</typeparam>
-public interface IRepository<T> where T : BaseEntity
+public interface ICommandRepository<T> where T : BaseEntity
 {
-    /// <summary>
-    /// Retrieves an entity by its unique identifier.
-    /// </summary>
-    /// <param name="id">The unique identifier of the entity.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task that represents the asynchronous operation. The task result contains the entity.</returns>
-    Task<Result<T>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Retrieves a list of all entities.
-    /// </summary>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task that represents the asynchronous operation. The task result contains the list of entities.</returns>
-    Task<Result<IReadOnlyList<T>>> ListAllAsync(CancellationToken cancellationToken = default);
-
     /// <summary>
     /// Adds a new entity to the repository.
     /// </summary>

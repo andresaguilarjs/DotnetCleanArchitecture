@@ -10,12 +10,12 @@ namespace Application.Users.Commands.CreateUser;
 
 internal sealed class CrateUserCommandHandler : ICommandHandler<CreateUserCommand, UserDTO>
 {
-    private readonly IUserRepository _userRepository;
+    private readonly IUserCommandRepository _userCommandRepository;
     private readonly UserService _userService;
 
-    public CrateUserCommandHandler(IUserRepository userRepository, UserService userService)
+    public CrateUserCommandHandler(IUserCommandRepository userRepository, UserService userService)
     {
-        _userRepository = userRepository;
+        _userCommandRepository = userRepository;
         _userService = userService;
     }
 
@@ -28,7 +28,7 @@ internal sealed class CrateUserCommandHandler : ICommandHandler<CreateUserComman
             return Result<UserDTO>.Failure(user.Errors);
         }
 
-        await _userRepository.AddAsync(user);
+        await _userCommandRepository.AddAsync(user);
 
         return Result<UserDTO>.Success(UserMapper.Map(user));
     }

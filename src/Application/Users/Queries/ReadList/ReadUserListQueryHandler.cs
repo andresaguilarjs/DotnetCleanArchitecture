@@ -7,16 +7,16 @@ namespace Application.Users.Queries.ReadList;
 
 internal sealed class ReadUserListQueryHandler : IRequestHandler<ReadUserListQuery, Result<IList<UserDTO>>>
 {
-    private readonly IUserRepository _userRepository;
+    private readonly IUserQueryRepository _userQueryRepository;
 
-    public ReadUserListQueryHandler(IUserRepository userRepository)
+    public ReadUserListQueryHandler(IUserQueryRepository userRepository)
     {
-        _userRepository = userRepository;
+        _userQueryRepository = userRepository;
     }
 
     public async Task<Result<IList<UserDTO>>> Handle(ReadUserListQuery request, CancellationToken cancellationToken)
     {
-        Result<IReadOnlyList<UserEntity>> users = await _userRepository.ListAllAsync();
+        Result<IReadOnlyList<UserEntity>> users = await _userQueryRepository.ListAllAsync();
 
         if (users.IsFailure)
         {
