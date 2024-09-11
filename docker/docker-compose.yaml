@@ -1,0 +1,22 @@
+version: "3.7"
+services:
+  sqlserver-database:
+    image: "mcr.microsoft.com/mssql/server:2022-latest"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Testing12345
+      - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - MSSQL_RPC_PORT=135
+      - MSSQL_PID=developer
+    ports:
+      - "1433:1433"
+    restart: always
+    networks:
+      clean-architecture:
+        ipv4_address: 192.168.92.21
+networks:
+  clean-architecture:
+    ipam:
+      driver: default
+      config:
+        - subnet: "192.168.92.0/24"
