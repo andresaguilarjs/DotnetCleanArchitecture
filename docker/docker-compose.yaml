@@ -14,6 +14,18 @@ services:
     networks:
       clean-architecture:
         ipv4_address: 192.168.92.21
+  rabbitmq:
+    image: rabbitmq:3.8.9-management
+    container_name: rabbitmq
+    restart: always
+    tty: true
+    stdin_open: true
+    ports:
+        - "15672:15672"
+        - "5672:5672"
+    networks:
+      clean-architecture:
+        ipv4_address: 192.168.92.22
 networks:
   clean-architecture:
     ipam:
