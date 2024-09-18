@@ -10,11 +10,9 @@ namespace Infrastructure.Database.Common;
 public class QueryRepository<TEntity> : IQueryRepository<TEntity> where TEntity : BaseEntity
 {
     protected readonly ApplicationDbContext Context;
-    protected readonly IUnitOfWork UnitOfWork;
-    public QueryRepository(ApplicationDbContext context, IUnitOfWork unitOfWork)
+    public QueryRepository(ApplicationDbContext context)
     {
         Context = context;
-        UnitOfWork = unitOfWork;
     }
 
     public async Task<Result<TEntity>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

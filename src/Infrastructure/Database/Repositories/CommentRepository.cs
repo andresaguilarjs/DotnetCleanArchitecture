@@ -7,7 +7,7 @@ namespace Infrastructure.Database.Repositories;
 
 public class CommentRepository : QueryRepository<CommentEntity>, ICommentRepository
 {
-    public CommentRepository(ApplicationDbContext context, IUnitOfWork unitOfWork) : base(context, unitOfWork)
+    public CommentRepository(ApplicationDbContext context) : base(context)
     {
     }
 }

@@ -7,7 +7,7 @@ namespace Infrastructure.Database.Repositories;
 
 public class PostRepository : QueryRepository<PostEntity>, IPostRepository
 {
-    public PostRepository(ApplicationDbContext context, IUnitOfWork unitOfWork) : base(context, unitOfWork)
+    public PostRepository(ApplicationDbContext context) : base(context)
     {
     }
 }

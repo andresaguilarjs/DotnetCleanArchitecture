@@ -1,4 +1,5 @@
 ﻿
+using Domain.Interfaces;
 using Infrastructure.Database.DBContext;
 
 namespace Infrastructure.Database.Common;

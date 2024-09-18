@@ -4,18 +4,21 @@ using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
 using Domain.Entities.User.Services;
 using Domain.Entities.User.ValueObjects;
+using Domain.Interfaces;
 using MediatR;
 
 namespace Application.Users.Commands.UpdateUser;
 
 internal sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, UserDTO>
 {
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IUserCommandRepository _userCommandRepository;
     private readonly IUserQueryRepository _userQueryRepository;
     private readonly UserService _userService;
 
-    public UpdateUserCommandHandler(IUserCommandRepository userRepository, IUserQueryRepository userQueryRepository, UserService userService)
+    public UpdateUserCommandHandler(IUnitOfWork unitOfWork, IUserCommandRepository userRepository, IUserQueryRepository userQueryRepository, UserService userService)
     {
+        _unitOfWork = unitOfWork;
         _userCommandRepository = userRepository;
         _userQueryRepository = userQueryRepository;
         _userService = userService;
@@ -42,7 +45,8 @@ internal sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserComma
             return Result<UserDTO>.Failure(user.Errors);
         }
 
-        await _userCommandRepository.UpdateAsync(user);
+        _userCommandRepository.Update(user);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result<UserDTO>.Success(UserMapper.Map(user));
     }

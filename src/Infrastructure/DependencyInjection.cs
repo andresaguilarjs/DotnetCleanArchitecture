@@ -1,4 +1,5 @@
 ﻿using Domain.Entities.User.Interfaces;
+using Domain.Interfaces;
 using Infrastructure.Database.Common;
 using Infrastructure.Database.DBContext;
 using Infrastructure.Database.Repositories.Command;

@@ -12,7 +12,7 @@ public sealed class UserCommandRepository : CommandRepository<UserEntity>, IUser
 {
     private readonly DbSet<UserEntity> _userEntity;
 
-    public UserCommandRepository(ApplicationDbContext context, IUnitOfWork unitOfWork, IUserQueryRepository queryRepository) : base(context, unitOfWork, queryRepository)
+    public UserCommandRepository(ApplicationDbContext context, IUserQueryRepository queryRepository) : base(context, queryRepository)
     {
         _userEntity = context.Set<UserEntity>();
     }

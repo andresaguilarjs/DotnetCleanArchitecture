@@ -4,17 +4,20 @@ using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
 using Domain.Entities.User.Services;
 using Domain.Entities.User.ValueObjects;
+using Domain.Interfaces;
 using MediatR;
 
 namespace Application.Users.Commands.CreateUser;
 
 internal sealed class CrateUserCommandHandler : ICommandHandler<CreateUserCommand, UserDTO>
 {
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IUserCommandRepository _userCommandRepository;
     private readonly UserService _userService;
 
-    public CrateUserCommandHandler(IUserCommandRepository userRepository, UserService userService)
+    public CrateUserCommandHandler(IUnitOfWork unitOfWork, IUserCommandRepository userRepository, UserService userService)
     {
+        _unitOfWork = unitOfWork;
         _userCommandRepository = userRepository;
         _userService = userService;
     }
@@ -29,6 +32,7 @@ internal sealed class CrateUserCommandHandler : ICommandHandler<CreateUserComman
         }
 
         await _userCommandRepository.AddAsync(user);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result<UserDTO>.Success(UserMapper.Map(user));
     }
