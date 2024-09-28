@@ -7,6 +7,8 @@ using Domain.Entities.User.Interfaces;
 using Domain.Entities.User.ValueObjects;
 using Domain.Interfaces;
 using FluentAssertions;
+using Infrastructure.Database.Repositories.Command;
+using Infrastructure.Database.Repositories.Query;
 using Moq;
 
 namespace Tests.Application.Users.Commands;
@@ -14,17 +16,20 @@ namespace Tests.Application.Users.Commands;
 public class CreateUserHandlerTests
 {
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
-    private readonly Mock<IUserCommandRepository> _userCommandRepositoryMock;
-    private readonly Mock<IUserQueryRepository> _userQueryRepositoryMock;
+    private readonly IUserCommandRepository _userCommandRepository;
+    private readonly IUserQueryRepository _userQueryRepository;
     private readonly Mock<IUserService> _userServiceMock;
     private readonly CrateUserCommandHandler _handler;
     public CreateUserHandlerTests()
     {
+        var dbContext = InMenoryDatabase.GetDbContext();
+
         _unitOfWorkMock = new Mock<IUnitOfWork>();
-        _userCommandRepositoryMock = new Mock<IUserCommandRepository>();
-        _userQueryRepositoryMock = new Mock<IUserQueryRepository>();
+        _userQueryRepository = new UserQueryRepository(dbContext);
+        _userCommandRepository = new UserCommandRepository(dbContext, _userQueryRepository);
+
         _userServiceMock = new Mock<IUserService>();
-        _handler = new CrateUserCommandHandler(_unitOfWorkMock.Object, _userCommandRepositoryMock.Object, _userServiceMock.Object);
+        _handler = new CrateUserCommandHandler(_unitOfWorkMock.Object, _userCommandRepository, _userServiceMock.Object);
     }
 
     [Fact]
