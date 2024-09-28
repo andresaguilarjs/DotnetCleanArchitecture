@@ -31,7 +31,7 @@ public sealed class UserService : IUserService
 
         IList<Error> errors = ValidateUserValueObjects(emailValue, firstNameValue, lastNameValue);
 
-        if (!IsEmailAvailable(emailValue))
+        if (emailValue.IsSuccess && !IsEmailAvailable(emailValue))
         {
             errors.Add(UserErrors.EmailAlreadyInUse(email));
         }

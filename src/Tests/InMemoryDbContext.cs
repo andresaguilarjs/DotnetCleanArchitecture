@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Tests;
 
-public static class InMenoryDatabase
+internal static class InMenoryDatabase
 {
     public static ApplicationDbContext GetDbContext()
     {
