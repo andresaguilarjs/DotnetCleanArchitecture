@@ -1,14 +1,15 @@
 using Domain.Common;
+using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
 using Domain.Entities.User.ValueObjects;
 
-namespace Domain.Entities.User.Services;
+namespace Application.Users.Services;
 
 /// <summary>
 /// Represents a service for user entities.
 /// This class should contain methods that would make easy to work with user entities applying the business rules.
 /// </summary>
-public sealed class UserService
+public sealed class UserService : IUserService
 {
     private readonly IUserQueryRepository _userQueryRepository;
 
