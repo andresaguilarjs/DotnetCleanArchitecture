@@ -8,13 +8,13 @@ using MediatR;
 
 namespace Application.Users.Commands.CreateUser;
 
-public sealed class CrateUserCommandHandler : ICommandHandler<CreateUserCommand, UserDTO>
+public sealed class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, UserDTO>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUserCommandRepository _userCommandRepository;
     private readonly IUserService _userService;
 
-    public CrateUserCommandHandler(IUnitOfWork unitOfWork, IUserCommandRepository userRepository, IUserService userService)
+    public CreateUserCommandHandler(IUnitOfWork unitOfWork, IUserCommandRepository userRepository, IUserService userService)
     {
         _unitOfWork = unitOfWork;
         _userCommandRepository = userRepository;

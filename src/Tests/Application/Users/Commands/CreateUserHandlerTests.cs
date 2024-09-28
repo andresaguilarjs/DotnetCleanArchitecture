@@ -19,14 +19,14 @@ public class CreateUserHandlerTests : BaseTest
 {
     private readonly IUserCommandRepository _userCommandRepository;
     private readonly IUserQueryRepository _userQueryRepository;
-    private readonly CrateUserCommandHandler _handler;
+    private readonly CreateUserCommandHandler _handler;
     public CreateUserHandlerTests() : base()
     {
         _userQueryRepository = new UserQueryRepository(_dbContext);
         _userCommandRepository = new UserCommandRepository(_dbContext, _userQueryRepository);
         UserService userService = new (_userQueryRepository);
 
-        _handler = new CrateUserCommandHandler(_unitOfWorkMock.Object, _userCommandRepository, userService);
+        _handler = new CreateUserCommandHandler(_unitOfWorkMock.Object, _userCommandRepository, userService);
     }
 
     [Fact]
