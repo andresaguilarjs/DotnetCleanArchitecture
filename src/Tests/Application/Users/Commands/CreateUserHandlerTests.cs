@@ -5,13 +5,9 @@ using Application.Users.Services;
 using Domain.Common;
 using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
-using Domain.Entities.User.ValueObjects;
-using Domain.Interfaces;
 using FluentAssertions;
-using Infrastructure.Database.DBContext;
 using Infrastructure.Database.Repositories.Command;
 using Infrastructure.Database.Repositories.Query;
-using Microsoft.EntityFrameworkCore.InMemory.Storage.Internal;
 using Moq;
 
 namespace Tests.Application.Users.Commands;
