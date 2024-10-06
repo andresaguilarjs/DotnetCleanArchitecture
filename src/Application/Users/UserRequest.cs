@@ -1,3 +1,3 @@
-﻿namespace Application;
+﻿namespace Application.Users;
 
-public record class UserRequest(string Email, string FirstName, string LastName, Guid? Id = null);
+public record UserRequest(string Email, string FirstName, string LastName, Guid? Id = null);
