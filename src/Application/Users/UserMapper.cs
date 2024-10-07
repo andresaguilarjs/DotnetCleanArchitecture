@@ -5,17 +5,17 @@ namespace Application.Users;
 
 public sealed class UserMapper
 {
-    public static UserDTO Map(UserEntity userEntity)
+    public static UserDTO Map(UserReadEntity userEntity)
     {
         return new UserDTO(
             userEntity.Id,
-            userEntity.Email.Value,
-            userEntity.FirstName.Value,
-            userEntity.LastName.Value
+            userEntity.Email,
+            userEntity.FirstName,
+            userEntity.LastName
         );
     }
 
-    public static IList<UserDTO> Map(IList<UserEntity> userEntities)
+    public static IList<UserDTO> Map(IList<UserReadEntity> userEntities)
     {
         return userEntities.Select(Map).ToList();
     }

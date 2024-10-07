@@ -1,3 +1,4 @@
+using Domain.Common;
 using Domain.Interfaces;
 
 namespace Domain.Entities.User.Interfaces;
@@ -7,4 +8,5 @@ namespace Domain.Entities.User.Interfaces;
 /// </summary>
 public interface IUserCommandRepository : ICommandRepository<UserEntity>
 {
+    public Task<Result<UserEntity>> GetByEmailAsync(string email);
 }

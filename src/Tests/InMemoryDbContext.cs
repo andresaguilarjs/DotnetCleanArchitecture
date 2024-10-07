@@ -11,22 +11,28 @@ namespace Tests;
 /// InMemoryDatabase class to create a new instance of the ApplicationDbContext
 /// and seed the database with some mock data.
 /// </summary>
-internal static class InMemoryDatabase
+public class InMemoryDatabase
 {
-    /// <summary>
-    /// GetDbContext method to create a new instance of the ApplicationDbContext
-    /// </summary>
-    /// <returns></returns>
-    public static ApplicationDbContext GetDbContext()
+
+    public ApplicationWriteDbContext applicationWriteDbContext;
+    public ApplicationReadDbContext applicationReadDbContext;
+
+    public InMemoryDatabase()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+        string databaseName = Guid.NewGuid().ToString();
+
+        var optionsWrite = new DbContextOptionsBuilder<ApplicationWriteDbContext>()
+            .UseInMemoryDatabase(databaseName)
             .Options;
 
-        var dbContext = new ApplicationDbContext(options);
-        dbContext.Database.EnsureCreated();
+        applicationWriteDbContext = new ApplicationWriteDbContext(optionsWrite);
+        applicationWriteDbContext.Database.EnsureCreated();
 
-        return dbContext;
+        var optionsRead = new DbContextOptionsBuilder<ApplicationReadDbContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+
+        applicationReadDbContext = new ApplicationReadDbContext(optionsRead);
     }
 
     /// <summary>
@@ -34,10 +40,9 @@ internal static class InMemoryDatabase
     /// </summary>
     /// <param name="dbContext"></param>
     /// <returns></returns>
-    public static async Task UserSeeding(ApplicationDbContext dbContext)
+    public async Task UserSeeding(ApplicationWriteDbContext dbContext)
     {
-        UserQueryRepository userQueryRepository = new(dbContext);
-        UserCommandRepository userCommandRepository = new(dbContext, userQueryRepository);
+        UserCommandRepository userCommandRepository = new(dbContext);
 
         for (int i = 0; i < 10; i++)
         {
@@ -51,4 +56,5 @@ internal static class InMemoryDatabase
         }
         dbContext.SaveChanges();
     }
+
 }

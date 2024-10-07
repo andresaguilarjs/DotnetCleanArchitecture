@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Infrastructure.Migrations
 {
-    [DbContext(typeof(ApplicationDbContext))]
+    [DbContext(typeof(ApplicationReadDbContext))]
     [Migration("20240615023026_AddSoftDeleteSupport")]
     partial class AddSoftDeleteSupport
     {

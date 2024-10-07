@@ -16,7 +16,7 @@ internal sealed class ReadUserListQueryHandler : IRequestHandler<ReadUserListQue
 
     public async Task<Result<IList<UserDTO>>> Handle(ReadUserListQuery request, CancellationToken cancellationToken)
     {
-        Result<IReadOnlyList<UserEntity>> users = await _userQueryRepository.ListAllAsync();
+        Result<IReadOnlyList<UserReadEntity>> users = await _userQueryRepository.ListAllAsync();
 
         if (users.IsFailure)
         {

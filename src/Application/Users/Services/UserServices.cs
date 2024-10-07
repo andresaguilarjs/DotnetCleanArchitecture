@@ -142,7 +142,7 @@ public sealed class UserService : IUserService
     /// <returns></returns>
     private bool IsEmailAvailable(Email email)
     {
-        Result<UserEntity> userByEmail = _userQueryRepository.GetByEmailAsync(email).Result;
+        Result<UserReadEntity> userByEmail = _userQueryRepository.GetByEmailAsync(email.Value).Result;
         return userByEmail.IsFailure;
     }
 }

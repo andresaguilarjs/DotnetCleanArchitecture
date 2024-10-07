@@ -12,10 +12,10 @@ namespace Infrastructure.HealthChecks;
 /// </summary>
 public class SqlHealthCheck : IHealthCheck
 {
-    private readonly ApplicationDbContext _dbContext;
+    private readonly ApplicationReadDbContext _dbContext;
     private readonly ILogger<SqlHealthCheck> _logger;
 
-    public SqlHealthCheck(ApplicationDbContext dbContext, ILogger<SqlHealthCheck> logger)
+    public SqlHealthCheck(ApplicationReadDbContext dbContext, ILogger<SqlHealthCheck> logger)
     {
         _dbContext = dbContext;
         _logger = logger;

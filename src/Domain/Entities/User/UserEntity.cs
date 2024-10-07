@@ -6,7 +6,7 @@ namespace Domain.Entities.User;
 /// <summary>
 /// Represents a user entity.
 /// </summary>
-public sealed class UserEntity : BaseEntity
+public sealed class UserEntity : BaseWriteEntity
 {
     /// <summary>
     /// Gets or sets the email of the user.

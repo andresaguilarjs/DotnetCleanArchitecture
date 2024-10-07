@@ -2,20 +2,16 @@ using Domain.Abstractions;
 using Domain.Common;
 using Domain.Entities.User;
 using Domain.Interfaces;
+using Infrastructure.Database.Abstractions.Common;
 using Infrastructure.Database.DBContext;
 using Microsoft.EntityFrameworkCore;
 
-namespace Infrastructure.Database.Common;
+namespace Infrastructure.Database.Abstractions;
 
-public class CommandRepository<TEntity> : ICommandRepository<TEntity> where TEntity : BaseEntity
+public abstract class CommandRepository<TEntity> : GetByIdRepository<TEntity>, ICommandRepository<TEntity> where TEntity : BaseWriteEntity
 {
-    protected readonly ApplicationDbContext Context;
-    private readonly IQueryRepository<TEntity> _queryRepository;
-
-    public CommandRepository(ApplicationDbContext context, IQueryRepository<TEntity> queryRepository)
+    public CommandRepository(ApplicationWriteDbContext context) : base(context)
     {
-        Context = context;
-        _queryRepository = queryRepository;
     }
 
     public async Task<TEntity> AddAsync(TEntity entity, CancellationToken cancellationToken = default)
@@ -31,7 +27,7 @@ public class CommandRepository<TEntity> : ICommandRepository<TEntity> where TEnt
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        TEntity entity = await _queryRepository.GetByIdAsync(id);
+        TEntity entity = await GetByIdAsync(id);
         entity.Delete();
     }
 }

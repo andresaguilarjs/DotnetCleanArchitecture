@@ -7,7 +7,7 @@ namespace Domain.Interfaces;
 /// Represents a generic repository interface for querying entities.
 /// </summary>
 /// <typeparam name="T">The type of the entity.</typeparam>
-public interface IQueryRepository<T> where T : BaseEntity
+public interface IQueryRepository<T> where T : BaseReadEntity
 {
     /// <summary>
     /// Retrieves an entity by its unique identifier.

@@ -6,7 +6,9 @@ namespace Tests;
 
 public abstract class BaseTest : IDisposable
 {
-    protected readonly ApplicationDbContext _dbContext;
+    protected readonly InMemoryDatabase _inMemoryDatabase = new();
+    protected readonly ApplicationWriteDbContext _writeDbContext;
+    protected readonly ApplicationReadDbContext _readDbContext;
     protected readonly Mock<IUnitOfWork> _unitOfWorkMock;
 
     /// <summary>
@@ -15,7 +17,8 @@ public abstract class BaseTest : IDisposable
     /// </summary>
     public BaseTest()
     {
-        _dbContext = InMemoryDatabase.GetDbContext();
+        _writeDbContext = _inMemoryDatabase.applicationWriteDbContext;
+        _readDbContext = _inMemoryDatabase.applicationReadDbContext;
         _unitOfWorkMock = new Mock<IUnitOfWork>();
     }
 
@@ -24,7 +27,8 @@ public abstract class BaseTest : IDisposable
     /// </summary>
     public void Dispose()
     {
-        _dbContext.Database.EnsureDeleted();
-        _dbContext.Dispose();
+        _readDbContext.Dispose();
+        _writeDbContext.Database.EnsureDeleted();
+        _writeDbContext.Dispose();
     }
 }

@@ -3,9 +3,9 @@ using Domain.Entities.User.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Infrastructure.Database.Configurations;
+namespace Infrastructure.Database.Configurations.Write;
 
-public class UserConfiguration : IEntityTypeConfiguration<UserEntity>
+internal class UserConfiguration : IEntityTypeConfiguration<UserEntity>
 {
     public void Configure(EntityTypeBuilder<UserEntity> builder)
     {

@@ -1,13 +1,13 @@
 ﻿using Domain.Entities.Post;
 using Domain.Entities.Post.Interfaces;
-using Infrastructure.Database.Common;
+using Infrastructure.Database.Abstractions;
 using Infrastructure.Database.DBContext;
 
 namespace Infrastructure.Database.Repositories;
 
-public class PostRepository : QueryRepository<PostEntity>, IPostRepository
+public class PostRepository : QueryRepository<PostReadEntity>, IPostRepository
 {
-    public PostRepository(ApplicationDbContext context) : base(context)
+    public PostRepository(ApplicationReadDbContext context) : base(context)
     {
     }
 }

@@ -6,9 +6,9 @@ namespace Infrastructure.Database.Common;
 
 public sealed class UnitOfWork : IUnitOfWork
 {
-    private readonly ApplicationDbContext _context;
+    private readonly ApplicationWriteDbContext _context;
 
-    public UnitOfWork(ApplicationDbContext context)
+    public UnitOfWork(ApplicationWriteDbContext context)
     {
         _context = context;
     }

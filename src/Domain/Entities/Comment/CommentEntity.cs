@@ -7,7 +7,7 @@ namespace Domain.Entities.Comment;
 /// <summary>
 /// Represents a comment entity.
 /// </summary>
-public class CommentEntity : BaseEntity
+public class CommentEntity : BaseWriteEntity
 {
     /// <summary>
     /// Get or sets the content of the comment.

@@ -5,7 +5,7 @@ using Domain.Abstractions;
 
 namespace Domain.Entities.Post;
 
-public class PostEntity : BaseEntity
+public class PostEntity : BaseWriteEntity
 {
     public Title Title { get; set; } = default!;
     public PostContent Content { get; set; } = default!;

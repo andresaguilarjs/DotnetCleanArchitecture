@@ -8,6 +8,7 @@ using Infrastructure.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Infrastructure;
 
@@ -20,11 +21,19 @@ public static class DependencyInjection
     /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<ApplicationDbContext>(options =>
+        services.AddDbContext<ApplicationWriteDbContext>(options =>
         {
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
-                options => options.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)
+                options => options.MigrationsAssembly(typeof(ApplicationWriteDbContext).Assembly.FullName)
             );
+        });
+
+        services.AddDbContext<ApplicationReadDbContext>(options =>
+        {
+            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
+                options => options.MigrationsAssembly(typeof(ApplicationReadDbContext).Assembly.FullName)
+            );
+            options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
         });
 
         services.AddScoped<IUserQueryRepository, UserQueryRepository>();

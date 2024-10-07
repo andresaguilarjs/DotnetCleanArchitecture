@@ -12,14 +12,12 @@ internal sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserComma
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUserCommandRepository _userCommandRepository;
-    private readonly IUserQueryRepository _userQueryRepository;
     private readonly IUserService _userService;
 
-    public UpdateUserCommandHandler(IUnitOfWork unitOfWork, IUserCommandRepository userRepository, IUserQueryRepository userQueryRepository, IUserService userService)
+    public UpdateUserCommandHandler(IUnitOfWork unitOfWork, IUserCommandRepository userRepository, IUserService userService)
     {
         _unitOfWork = unitOfWork;
         _userCommandRepository = userRepository;
-        _userQueryRepository = userQueryRepository;
         _userService = userService;
     }
 
@@ -30,14 +28,14 @@ internal sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserComma
             return Result<UserDTO>.Failure(new List<Error>() { GenericErrors.NullOrEmpty(nameof(request.UserRequest)) });
         }
 
-        Result<UserEntity> user = await _userQueryRepository.GetByIdAsync((Guid)request.UserRequest.Id, cancellationToken);
+        Result<UserEntity> user = await _userCommandRepository.GetByIdAsync((Guid)request.UserRequest.Id, cancellationToken);
 
         if (user.IsFailure)
         {
             return Result<UserDTO>.Failure( new List<Error>() { GenericErrors.NotFound((Guid)request.UserRequest.Id, typeof(UserDTO)) });
         }
 
-        user = _userService.UpdateUserEntity(user, request.UserRequest.Email, request.UserRequest.FirstName, request.UserRequest.LastName);
+        user = _userService.UpdateUserEntity(user.Value, request.UserRequest.Email, request.UserRequest.FirstName, request.UserRequest.LastName);
 
         if (user.IsFailure)
         {
@@ -47,6 +45,7 @@ internal sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserComma
         _userCommandRepository.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result<UserDTO>.Success(UserMapper.Map(user));
+        UserDTO userDTO = new UserDTO(user.Value.Id, user.Value.Email.Value, user.Value.FirstName.Value, user.Value.LastName.Value);
+        return Result<UserDTO>.Success(userDTO);
     }
 }

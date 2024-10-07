@@ -33,6 +33,7 @@ public sealed class CreateUserCommandHandler : ICommandHandler<CreateUserCommand
         await _userCommandRepository.AddAsync(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result<UserDTO>.Success(UserMapper.Map(user));
+        UserDTO userDTO = new UserDTO(user.Value.Id, user.Value.Email.Value, user.Value.FirstName.Value, user.Value.LastName.Value);
+        return Result<UserDTO>.Success(userDTO);
     }
 }
