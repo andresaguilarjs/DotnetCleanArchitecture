@@ -38,11 +38,10 @@ public class InMemoryDatabase
     /// <summary>
     /// UserSeeding method to seed the database with some mock data.
     /// </summary>
-    /// <param name="dbContext"></param>
     /// <returns></returns>
-    public async Task UserSeeding(ApplicationWriteDbContext dbContext)
+    public async Task UserSeeding()
     {
-        UserCommandRepository userCommandRepository = new(dbContext);
+        UserCommandRepository userCommandRepository = new(applicationWriteDbContext);
 
         for (int i = 0; i < 10; i++)
         {
@@ -54,7 +53,7 @@ public class InMemoryDatabase
                 )
             );
         }
-        dbContext.SaveChanges();
+        applicationWriteDbContext.SaveChanges();
     }
 
 }

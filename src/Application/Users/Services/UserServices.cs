@@ -11,11 +11,11 @@ namespace Application.Users.Services;
 /// </summary>
 public sealed class UserService : IUserService
 {
-    private readonly IUserQueryRepository _userQueryRepository;
+    private readonly IUserCommandRepository _userCommandRepository;
 
-    public UserService(IUserQueryRepository userQueryRepository)
+    public UserService(IUserCommandRepository userCommandRepository)
     {
-        _userQueryRepository = userQueryRepository;
+        _userCommandRepository = userCommandRepository;
     }
 
     /// <summary>
@@ -142,7 +142,7 @@ public sealed class UserService : IUserService
     /// <returns></returns>
     private bool IsEmailAvailable(Email email)
     {
-        Result<UserReadEntity> userByEmail = _userQueryRepository.GetByEmailAsync(email.Value).Result;
+        Result<UserEntity> userByEmail = _userCommandRepository.GetByEmailAsync(email.Value).Result;
         return userByEmail.IsFailure;
     }
 }

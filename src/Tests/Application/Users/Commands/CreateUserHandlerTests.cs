@@ -21,9 +21,9 @@ public class CreateUserHandlerTests : BaseTest
     {
         _userCommandRepository = new UserCommandRepository(_writeDbContext);
         _userQueryRepository = new UserQueryRepository(_readDbContext);
-        _handler = new CreateUserCommandHandler(_unitOfWorkMock.Object, _userCommandRepository, new UserService(_userQueryRepository));
+        _handler = new CreateUserCommandHandler(_unitOfWorkMock.Object, _userCommandRepository, new UserService(_userCommandRepository));
 
-        _inMemoryDatabase.UserSeeding(_writeDbContext).Wait();
+        _inMemoryDatabase.UserSeeding().Wait();
     }
 
     [Fact]
@@ -58,5 +58,22 @@ public class CreateUserHandlerTests : BaseTest
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().NotBeEmpty();
         result.Errors.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCalledWithDuplicateEmail_ShouldFail()
+    {
+        // Arrange
+        UserEntity existingUser = await _userCommandRepository.GetByEmailAsync("mock-0@gmail.com");
+        UserRequest request = new(existingUser.Email.Value, existingUser.FirstName.Value, existingUser.LastName.Value);
+        CreateUserCommand command = new(request);
+
+        // Act
+        Result<UserDTO> result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().NotBeEmpty();
+        result.Errors.Should().HaveCount(1);
     }
 }
