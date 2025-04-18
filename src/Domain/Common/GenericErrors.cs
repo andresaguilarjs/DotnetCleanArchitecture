@@ -32,6 +32,15 @@ public sealed class GenericErrors
     }
 
     /// <summary>
+    /// Represent an error that occurs in unexpected moments
+    /// </summary>
+    /// <returns></returns>
+    public static Error SomethingWhenWrong()
+    {
+        return new Error(ErrorCodes.InternalServerError, $"Oops! Something went wrong. Please try again in a moment.");
+    }
+
+    /// <summary>
     /// Get the type name from the object type.
     /// It will remove the generic type name from the object type to prevent show the generic type name in the error message.
     /// </summary>

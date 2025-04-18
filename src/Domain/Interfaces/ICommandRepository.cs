@@ -15,7 +15,7 @@ public interface ICommandRepository<T> where T : BaseEntity
     /// <param name="entity">The entity to add.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the added entity.</returns>
-    Task<T> AddAsync(T entity, CancellationToken cancellationToken = default);
+    Task<Result<T>> AddAsync(T entity, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates an existing entity in the repository.
@@ -25,10 +25,10 @@ public interface ICommandRepository<T> where T : BaseEntity
     void Update(T entity, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deletes an entity from the repository by its unique identifier.
+    /// Asynchronously deletes an entity from the repository using its unique identifier.
     /// </summary>
     /// <param name="id">The unique identifier of the entity to delete.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task that represents the asynchronous operation.</returns>
-    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the result of the delete operation, indicating success or failure.</returns>
+    Task<Result> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

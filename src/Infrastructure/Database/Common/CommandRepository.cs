@@ -18,10 +18,16 @@ public class CommandRepository<TEntity> : ICommandRepository<TEntity> where TEnt
         _queryRepository = queryRepository;
     }
 
-    public async Task<TEntity> AddAsync(TEntity entity, CancellationToken cancellationToken = default)
+    public async Task<Result<TEntity>> AddAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
         await Context.Set<TEntity>().AddAsync(entity);
-        return entity;
+
+        if (entity != null)
+        {
+            return Result<TEntity>.Success(entity);
+        }
+
+        return Result<TEntity>.Failure(new List<Error>() { GenericErrors.SomethingWhenWrong() });
     }
 
     public void Update(TEntity entity, CancellationToken cancellationToken = default)
@@ -29,9 +35,15 @@ public class CommandRepository<TEntity> : ICommandRepository<TEntity> where TEnt
         Context.Entry(entity).CurrentValues.SetValues(entity);
     }
 
-    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Result> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         TEntity entity = await _queryRepository.GetByIdAsync(id);
+        if (entity == null)
+        {
+            return Result.Failure(GenericErrors.NotFound(id, typeof(TEntity)));
+        }
+
         entity.Delete();
+        return Result.Success();
     }
 }
