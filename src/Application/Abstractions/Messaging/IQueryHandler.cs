@@ -1,9 +1,8 @@
-﻿using Application.Abstractions.Messaging;
-using Domain.Common;
-using MediatR;
+﻿using Domain.Common;
 
 namespace Application.Abstractions.Messaging;
 
-public interface IQueryHandler<TQuery, TResponse> : IRequestHandler<TQuery, Result<TResponse>> where TQuery : IQuery<TResponse>
+public interface IQueryHandler<TQuery, TResponse> where TQuery : IQuery<TResponse>
 {
+    Task<Result<TResponse>> Handle(TQuery request, CancellationToken cancellationToken);
 }

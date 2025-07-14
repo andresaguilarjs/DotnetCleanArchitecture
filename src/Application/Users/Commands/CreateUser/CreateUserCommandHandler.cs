@@ -2,9 +2,7 @@ using Application.Abstractions.Messaging;
 using Domain.Common;
 using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
-using Domain.Entities.User.ValueObjects;
 using Domain.Interfaces;
-using MediatR;
 
 namespace Application.Users.Commands.CreateUser;
 

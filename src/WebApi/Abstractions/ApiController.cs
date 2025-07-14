@@ -1,5 +1,4 @@
 using Domain.Common;
-using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
@@ -8,13 +7,6 @@ namespace WebApi.Abstractions;
 [ApiController]
 public abstract class ApiController : ControllerBase
 {
-    protected ISender Sender;
-
-    protected ApiController(ISender sender)
-    {
-        Sender = sender;
-    }
-
     /// <summary>
     /// Handles the result of a request that does not return a value
     /// </summary>

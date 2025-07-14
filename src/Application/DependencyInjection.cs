@@ -1,5 +1,12 @@
+using Application.Abstractions.Messaging;
 using Application.Behaviors;
 using Application.Middlewares;
+using Application.Users;
+using Application.Users.Commands.CreateUser;
+using Application.Users.Commands.DeleteUser;
+using Application.Users.Commands.UpdateUser;
+using Application.Users.Queries.ReadList;
+using Application.Users.Queries.ReadUser;
 using Application.Users.Services;
 using Domain.Entities.User.Interfaces;
 using MediatR;
@@ -15,14 +22,19 @@ public static class DependencyInjection
     /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        services.AddMediatR(configuration =>
-        {
-            configuration.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
-        });
 
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>));
 
         services.AddScoped<IUserService, UserService>();
+
+        // Commands
+        services.AddScoped<ICommandHandler<DeleteUserCommand>, DeleteUserCommandHandler>();
+        services.AddScoped<ICommandHandler<CreateUserCommand, UserDTO>, CreateUserCommandHandler>();
+        services.AddScoped<ICommandHandler<UpdateUserCommand, UserDTO>, UpdateUserCommandHandler>();
+
+        // Queries
+        services.AddScoped<IQueryHandler<ReadUserListQuery, IList<UserDTO>>, ReadUserListQueryHandler>();
+        services.AddScoped<IQueryHandler<ReadUserQuery, UserDTO>, ReadUserQueryHandler>();
 
         services.AddTransient<ExceptionHanddlerMiddleware>();
         return services;

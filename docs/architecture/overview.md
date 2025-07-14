@@ -30,7 +30,7 @@ This project implements several design patterns, including:
 ## Technologies and Tools
 - **Languages**: C#
 - **Frameworks**: .NET Core, ASP.NET Core
-- **Libraries**: Entity Framework Core, MediatR, EntityFramework
+- **Libraries**: Entity Framework Core, EntityFramework
 - **Tools**: Visual Studio Code, Swagger
 
 ## Getting Started

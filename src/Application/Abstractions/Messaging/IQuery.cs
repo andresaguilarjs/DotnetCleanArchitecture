@@ -1,8 +1,5 @@
-﻿using Domain.Common;
-using MediatR;
+﻿namespace Application.Abstractions.Messaging;
 
-namespace Application.Abstractions.Messaging;
-
-public interface IQuery<TResponse> : IRequest<Result<TResponse>>
+public interface IQuery<TResponse>
 {
 }

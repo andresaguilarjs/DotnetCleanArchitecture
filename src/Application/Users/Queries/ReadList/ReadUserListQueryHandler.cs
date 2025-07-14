@@ -1,11 +1,11 @@
+using Application.Abstractions.Messaging;
 using Domain.Common;
 using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
-using MediatR;
 
 namespace Application.Users.Queries.ReadList;
 
-internal sealed class ReadUserListQueryHandler : IRequestHandler<ReadUserListQuery, Result<IList<UserDTO>>>
+public sealed class ReadUserListQueryHandler : IQueryHandler<ReadUserListQuery, IList<UserDTO>>
 {
     private readonly IUserQueryRepository _userQueryRepository;
 
