@@ -1,5 +1,5 @@
 ﻿namespace Application.Abstractions.Messaging;
 
-public interface IQuery<TResponse>
-{
-}
+public interface IBaseQuery : IBaseRequest;
+
+public interface IQuery<TResponse> : IBaseQuery;

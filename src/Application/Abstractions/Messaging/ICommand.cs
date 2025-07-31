@@ -1,9 +1,6 @@
-﻿namespace Application.Abstractions.Messaging;
+﻿using Domain.Common;
 
-public interface ICommand
-{
-}
-
-public interface ICommand<TResult>
-{
-}
+namespace Application.Abstractions.Messaging;
+public interface IBaseCommand : IBaseRequest;
+public interface ICommand : ICommand<Result>;
+public interface ICommand<TResult> : IBaseCommand;

@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>));
 
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<RequestDispatcher>();
 
         // Commands
         services.AddScoped<ICommandHandler<DeleteUserCommand>, DeleteUserCommandHandler>();

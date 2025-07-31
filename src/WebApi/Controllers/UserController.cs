@@ -20,12 +20,16 @@ public class UserController : ApiController
     private readonly IQueryHandler<ReadUserQuery, UserDTO> _readUserQueryHandler;
     private readonly ICommandHandler<CreateUserCommand, UserDTO> _createUserCommandHandler;
     private readonly ICommandHandler<UpdateUserCommand, UserDTO> _updateUserCommandHandler;
+
+    private readonly RequestDispatcher _dispatcher;
+
     public UserController(
         ICommandHandler<DeleteUserCommand> deleteUserCommandHandler,
         IQueryHandler<ReadUserListQuery, IList<UserDTO>> userListQueryHandler,
         IQueryHandler<ReadUserQuery, UserDTO> readUserQueryHandler,
         ICommandHandler<CreateUserCommand, UserDTO> createUserCommandHandler,
-        ICommandHandler<UpdateUserCommand, UserDTO> updateUserCommandHandler
+        ICommandHandler<UpdateUserCommand, UserDTO> updateUserCommandHandler,
+        RequestDispatcher dispatcher
         )
     {
         _deleteUserCommandHandler = deleteUserCommandHandler;
@@ -33,31 +37,31 @@ public class UserController : ApiController
         _readUserQueryHandler = readUserQueryHandler;
         _createUserCommandHandler = createUserCommandHandler;
         _updateUserCommandHandler = updateUserCommandHandler;
+        _dispatcher = dispatcher;
     }
 
     [HttpGet]
     public async Task<IActionResult> Get()
     {
-        Console.WriteLine("Get");
-        Result<IList<UserDTO>> result = await _userListQueryHandler.Handle(new ReadUserListQuery(), CancellationToken.None);
-        Console.WriteLine(result.IsSuccess);
+        ReadUserListQuery readUserListQuery = new();
+        Result<IList<UserDTO>> result = await _dispatcher.DispatchAsync<IList<UserDTO>>(readUserListQuery);
         return HandleResult<IList<UserDTO>>(result);
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(Guid id)
     {
-        var readUserQuery = new ReadUserQuery(id);
-        Result<UserDTO> result = await _readUserQueryHandler.Handle(readUserQuery, CancellationToken.None);
+        ReadUserQuery readUserQuery = new (id);
+        Result<UserDTO> result = await _dispatcher.DispatchAsync<UserDTO>(readUserQuery);
         return HandleResult<UserDTO>(result);
     }
 
     [HttpPost]
     public async Task<IActionResult> Post(UserRequest userRequest)
     {
-        var createUserCommand = new CreateUserCommand(userRequest);
+        CreateUserCommand createUserCommand = new CreateUserCommand(userRequest);
 
-        Result<UserDTO> result = await _createUserCommandHandler.Handle(createUserCommand, CancellationToken.None);
+        Result<UserDTO> result = await _dispatcher.DispatchAsync<UserDTO>(createUserCommand);
         return HandleResult<UserDTO>(result, isCreation: true);
     }
 
@@ -68,16 +72,16 @@ public class UserController : ApiController
             return BadRequest("Id is required");
         }
 
-        var updateUserCommand = new UpdateUserCommand(userRequest);
-
-        Result<UserDTO> result = await _updateUserCommandHandler.Handle(updateUserCommand, CancellationToken.None);
+        UpdateUserCommand updateUserCommand = new (userRequest);
+        Result<UserDTO> result = await _dispatcher.DispatchAsync<UserDTO>(updateUserCommand);  // _updateUserCommandHandler.Handle(updateUserCommand, CancellationToken.None);
         return HandleResult<UserDTO>(result);
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        Result result = await _deleteUserCommandHandler.Handle(new DeleteUserCommand(id), cancellationToken);
+        DeleteUserCommand deleteUserCommand = new (id);
+        Result result = await _dispatcher.DispatchAsync(deleteUserCommand, cancellationToken); // _deleteUserCommandHandler.Handle(deleteUserCommand, cancellationToken);
         return HandleResult(result);
     }
 }

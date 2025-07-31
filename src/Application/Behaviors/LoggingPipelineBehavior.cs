@@ -1,5 +1,4 @@
-using Domain.Common;
-using MediatR;
+using Application.Abstractions.PipelineBehaviors;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Behaviors;
@@ -19,7 +18,8 @@ public class LoggingPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TR
         _logger = logger;
     }
 
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+
+    public async Task<TResponse> HandleAsync(TRequest request, CancellationToken cancellationToken, Func<Task<TResponse>> next)
     {
         _logger.LogInformation("Handling {RequestType} {DateTimeUtc}", typeof(TRequest).Name, DateTime.UtcNow);
         
