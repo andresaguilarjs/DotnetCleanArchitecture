@@ -30,7 +30,7 @@ public sealed class Result
     /// Creates a new successful result.
     /// </summary>
     /// <returns>A new instance of <see cref="Result"/> representing a successful operation.</returns>
-    public static Result Success() => new Result(true, new List<Error>() { Error.None });
+    public static Result Success() => new Result(true, new List<Error>() {});
 
     /// <summary>
     /// Creates a new failed result with the specified error.

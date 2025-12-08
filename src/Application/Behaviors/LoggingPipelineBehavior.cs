@@ -1,5 +1,6 @@
 using Application.Abstractions.PipelineBehaviors;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace Application.Behaviors;
 
@@ -21,12 +22,45 @@ public class LoggingPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TR
 
     public async Task<TResponse> HandleAsync(TRequest request, CancellationToken cancellationToken, Func<Task<TResponse>> next)
     {
-        _logger.LogInformation("Handling {RequestType} {DateTimeUtc}", typeof(TRequest).Name, DateTime.UtcNow);
-        
-        var result = await next();
+        string? traceId = Activity.Current?.Id ?? Guid.NewGuid().ToString();
 
-        _logger.LogInformation("Completed {RequestType} {DateTimeUtc}", typeof(TRequest).Name, DateTime.UtcNow);
+        _logger.LogInformation(
+            "Handling {RequestType} {@Request} TraceId:{TraceId} StartedAt:{UtcNow}",
+            typeof(TRequest).Name,
+            request, traceId,
+            DateTime.UtcNow
+         );
 
-        return result;
+        Stopwatch? stopWatch = Stopwatch.StartNew();
+
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var result = await next();
+
+            stopWatch.Stop();
+            _logger.LogInformation("Completed {RequestType} {@Response} TraceId:{TraceId} ElapsedMs:{ElapsedMs}",
+               typeof(TRequest).Name, result, traceId, stopWatch.ElapsedMilliseconds);
+
+            return result;
+        } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            stopWatch.Stop();
+            _logger.LogWarning(
+                "Cancelled {RequestType} TraceId:{TraceId} ElapsedMs:{ElapsedMs}",
+                typeof(TRequest).Name,
+                traceId,
+                stopWatch.ElapsedMilliseconds
+            );
+            throw;
+        }
+        catch (Exception ex)
+        {
+            stopWatch.Stop();
+            _logger.LogError(ex, "Error handling {RequestType} TraceId:{TraceId} ElapsedMs:{ElapsedMs}",
+                typeof(TRequest).Name, traceId, stopWatch.ElapsedMilliseconds);
+            throw;
+        }
     }
 }

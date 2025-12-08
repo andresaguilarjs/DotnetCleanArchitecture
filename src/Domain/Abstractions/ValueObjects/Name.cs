@@ -1,7 +1,7 @@
-using System.Text.RegularExpressions;
 using Domain.Common;
 using Domain.Constants;
 using Domain.Entities.User;
+using System.Text.RegularExpressions;
 
 namespace Domain.Abstractions.ValueObjects;
 

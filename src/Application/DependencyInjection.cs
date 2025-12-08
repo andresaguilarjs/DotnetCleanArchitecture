@@ -1,4 +1,5 @@
 using Application.Abstractions.Messaging;
+using Application.Abstractions.PipelineBehaviors;
 using Application.Behaviors;
 using Application.Middlewares;
 using Application.Users;
@@ -9,7 +10,6 @@ using Application.Users.Queries.ReadList;
 using Application.Users.Queries.ReadUser;
 using Application.Users.Services;
 using Domain.Entities.User.Interfaces;
-using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Application;
@@ -22,11 +22,11 @@ public static class DependencyInjection
     /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-
+        // Behaviors
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>));
 
+        // Services
         services.AddScoped<IUserService, UserService>();
-        services.AddScoped<RequestDispatcher>();
 
         // Commands
         services.AddScoped<ICommandHandler<DeleteUserCommand>, DeleteUserCommandHandler>();

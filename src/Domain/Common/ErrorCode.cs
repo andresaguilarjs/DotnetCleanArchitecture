@@ -3,7 +3,7 @@ namespace Domain.Common;
 /// <summary>
 /// Enum that represents the error codes that can be returned by the API
 /// </summary>
-public enum ErrorCodes {
+public enum ErrorCode {
     Empty = 0,
     BadRequest = 400,
     ValidationError = 400,

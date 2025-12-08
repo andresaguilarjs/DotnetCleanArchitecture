@@ -2,13 +2,14 @@ using Application;
 using Application.Extensions;
 using Infrastructure;
 using WebApi;
+using FastEndpoints;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddOpenApi();
+builder.Services.AddFastEndpoints();
 
 // Add services from other projects
 builder.Services.AddApplication();
@@ -21,11 +22,18 @@ app.UseCustomMiddleware();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.Title = "WebApi API Reference";
+        options.WithTheme(ScalarTheme.DeepSpace);
+        options.WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.HttpClient);
+
+    });
 }
 
 app.MapControllers();
 app.MapHealthChecks("/health");
+app.UseFastEndpoints();
 
 app.Run();

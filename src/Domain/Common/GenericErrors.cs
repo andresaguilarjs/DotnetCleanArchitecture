@@ -1,6 +1,5 @@
-using System.Text.RegularExpressions;
-using Domain.Abstractions;
 using Domain.Constants;
+using System.Text.RegularExpressions;
 
 namespace Domain.Common;
 
@@ -19,7 +18,7 @@ public sealed class GenericErrors
     /// <returns></returns>
     public static Error NotFound(Guid resourceId, Type objectType) {
         string typeName = GetTypeName(objectType);
-        return new Error(ErrorCodes.NotFound, $"The {typeName} with ID '{resourceId}' was not found.");
+        return new Error(ErrorCode.NotFound, $"The {typeName} with ID '{resourceId}' was not found.");
     }
 
     /// <summary>
@@ -28,7 +27,7 @@ public sealed class GenericErrors
     /// <param name="parameterName"></param>
     /// <returns></returns>
     public static Error NullOrEmpty(string parameterName) {
-        return new Error(ErrorCodes.ValidationError, $"The parameter '{parameterName}' cannot be null or empty.");
+        return new Error(ErrorCode.ValidationError, $"The parameter '{parameterName}' cannot be null or empty.");
     }
 
     /// <summary>
@@ -37,7 +36,7 @@ public sealed class GenericErrors
     /// <returns></returns>
     public static Error SomethingWhenWrong()
     {
-        return new Error(ErrorCodes.InternalServerError, $"Oops! Something went wrong. Please try again in a moment.");
+        return new Error(ErrorCode.InternalServerError, $"Oops! Something went wrong. Please try again in a moment.");
     }
 
     /// <summary>

@@ -1,6 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-using WebApi.Abstractions;
-
 namespace WebApi;
 
 public static class DependencyInjection
