@@ -1,3 +1,4 @@
+using Application.Abstractions.Messaging;
 using Application.Users;
 using Application.Users.Commands.UpdateUser;
 using Domain.Common;
@@ -9,11 +10,11 @@ namespace WebApi.Endpoints.Users;
 
 public class UpdateUserEndpoint : BaseEndpoint<UserRequest, Results<Ok<UserDTO>, ProblemDetails>, UserDTO>
 {
-    private readonly Application.Abstractions.Messaging.ICommandHandler<UpdateUserCommand, UserDTO> _updateUserCommandHandler;
+    private readonly IMediator _mediator;
 
-    public UpdateUserEndpoint(Application.Abstractions.Messaging.ICommandHandler<UpdateUserCommand, UserDTO> updateUserCommandHandler)
+    public UpdateUserEndpoint(IMediator mediator)
     {
-        _updateUserCommandHandler = updateUserCommandHandler;
+        _mediator = mediator;
     }
 
     public override void Configure()
@@ -26,7 +27,7 @@ public class UpdateUserEndpoint : BaseEndpoint<UserRequest, Results<Ok<UserDTO>,
     {
         UserRequest userRequest = new(request.Email, request.FirstName, request.LastName, request.Id);
         UpdateUserCommand updateUserCommand = new(userRequest);
-        Result<UserDTO> result = await _updateUserCommandHandler.Handle(updateUserCommand, cancelationToken);
+        Result<UserDTO> result = await _mediator.Send<UpdateUserCommand, UserDTO>(updateUserCommand, cancelationToken);
 
         if (result.IsFailure)
         {

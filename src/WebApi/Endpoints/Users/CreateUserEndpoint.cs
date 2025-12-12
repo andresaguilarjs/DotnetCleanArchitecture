@@ -1,3 +1,4 @@
+using Application.Abstractions.Messaging;
 using Application.Users;
 using Application.Users.Commands.CreateUser;
 using Domain.Common;
@@ -9,11 +10,11 @@ namespace WebApi.Endpoints.Users;
 
 public class CreateUserEndpoint : BaseEndpoint<UserRequest, Results<Ok<UserDTO>, NotFound, ProblemDetails>, UserDTO>
 {
-    private readonly Application.Abstractions.Messaging.ICommandHandler<CreateUserCommand, UserDTO> _createUserCommandHandler;
+    private readonly IMediator _mediator;
 
-    public CreateUserEndpoint(Application.Abstractions.Messaging.ICommandHandler<CreateUserCommand, UserDTO> createUserCommandHandler)
+    public CreateUserEndpoint(IMediator mediator)
     {
-        _createUserCommandHandler = createUserCommandHandler;
+        _mediator = mediator;
     }
 
     public override void Configure()
@@ -25,7 +26,7 @@ public class CreateUserEndpoint : BaseEndpoint<UserRequest, Results<Ok<UserDTO>,
     public override async Task<Results<Ok<UserDTO>, NotFound, ProblemDetails>> ExecuteAsync(UserRequest request, CancellationToken cancelationToken)
     {
         CreateUserCommand createUserCommand = new(request);
-        Result<UserDTO> result = await _createUserCommandHandler.Handle(createUserCommand, cancelationToken);
+        Result<UserDTO> result = await _mediator.Send<CreateUserCommand, UserDTO>(createUserCommand, cancelationToken);
 
         if (result.IsFailure)
         {

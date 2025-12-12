@@ -1,3 +1,4 @@
+using Application.Abstractions.Messaging;
 using Application.Users;
 using Application.Users.Commands.DeleteUser;
 using Domain.Common;
@@ -9,11 +10,11 @@ namespace WebApi.Endpoints.Users;
 
 public class DeleteUserEndpoint : BaseEndpoint<EmptyRequest, Results<NoContent, ProblemDetails>, UserDTO>
 {
-    private readonly Application.Abstractions.Messaging.ICommandHandler<DeleteUserCommand> _deleteUserCommandHandler;
+    private readonly IMediator _mediator;
 
-    public DeleteUserEndpoint(Application.Abstractions.Messaging.ICommandHandler<DeleteUserCommand> deleteUserCommandHandler)
+    public DeleteUserEndpoint(IMediator mediator)
     {
-        _deleteUserCommandHandler = deleteUserCommandHandler;
+        _mediator = mediator;
     }
 
     public override void Configure()
@@ -32,7 +33,7 @@ public class DeleteUserEndpoint : BaseEndpoint<EmptyRequest, Results<NoContent, 
         }
 
         DeleteUserCommand deleteUserCommand = new(userId);
-        Result result = await _deleteUserCommandHandler.Handle(deleteUserCommand, cancelationToken);
+        Result result = await _mediator.Send(deleteUserCommand, cancelationToken);
 
         if (result.IsFailure)
         {

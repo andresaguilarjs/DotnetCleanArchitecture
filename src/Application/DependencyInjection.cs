@@ -22,6 +22,9 @@ public static class DependencyInjection
     /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        // Mediator
+        services.AddScoped<IMediator, Application.Mediator.Mediator>();
+
         // Behaviors
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>));
 

@@ -6,11 +6,14 @@ This document provides practical code examples demonstrating how to use the Clea
 
 1. [Creating a Command](#creating-a-command)
 2. [Creating a Query](#creating-a-query)
-3. [Creating an Endpoint](#creating-an-endpoint)
-4. [Working with Value Objects](#working-with-value-objects)
-5. [Error Handling](#error-handling)
-6. [Using the Result Pattern](#using-the-result-pattern)
-7. [Domain Service Example](#domain-service-example)
+3. [Using the Mediator](#using-the-mediator)
+4. [Creating an Endpoint](#creating-an-endpoint)
+5. [Working with Value Objects](#working-with-value-objects)
+6. [Error Handling](#error-handling)
+7. [Using the Result Pattern](#using-the-result-pattern)
+8. [Domain Service Example](#domain-service-example)
+9. [Mediator Usage Examples](#mediator-usage-examples)
+10. [Pipeline Behaviors](#pipeline-behaviors)
 
 ## Creating a Command
 
@@ -163,14 +166,41 @@ internal sealed class ReadUserQueryHandler : IQueryHandler<ReadUserQuery, UserDT
 services.AddScoped<IQueryHandler<ReadUserQuery, UserDTO>, ReadUserQueryHandler>();
 ```
 
+## Using the Mediator
+
+The Mediator pattern is used to decouple endpoints from command/query handlers. Instead of directly injecting handlers, endpoints use the `IMediator` interface to send requests.
+
+### Mediator Interface
+
+The mediator provides two `Send` methods:
+
+1. **`Send<TRequest>`** - For commands that return `Result` (no value)
+2. **`Send<TRequest, TResponse>`** - For commands/queries that return `Result<TResponse>`
+
+### Registration
+
+The mediator is registered in `Application/DependencyInjection.cs`:
+
+```csharp
+services.AddScoped<IMediator, Application.Mediator.Mediator>();
+```
+
+### Benefits
+
+- **Decoupling**: Endpoints don't need to know about specific handlers
+- **Pipeline Behaviors**: All requests automatically go through registered pipeline behaviors (e.g., logging)
+- **Flexibility**: Easy to add cross-cutting concerns without modifying endpoints or handlers
+- **Testability**: Easy to mock the mediator in tests
+
 ## Creating an Endpoint
 
-Endpoints handle HTTP requests and delegate to command/query handlers.
+Endpoints handle HTTP requests and use the mediator to send commands/queries.
 
 ### Step 1: Create the Endpoint
 
 ```csharp
 // WebApi/Endpoints/Users/CreateUserEndpoint.cs
+using Application.Abstractions.Messaging;
 using Application.Users;
 using Application.Users.Commands.CreateUser;
 using Domain.Common;
@@ -182,22 +212,17 @@ namespace WebApi.Endpoints.Users;
 
 public class CreateUserEndpoint : BaseEndpoint<UserRequest, Results<Ok<UserDTO>, NotFound, ProblemDetails>, UserDTO>
 {
-    private readonly Application.Abstractions.Messaging.ICommandHandler<CreateUserCommand, UserDTO> _createUserCommandHandler;
+    private readonly IMediator _mediator;
 
-    public CreateUserEndpoint(
-        Application.Abstractions.Messaging.ICommandHandler<CreateUserCommand, UserDTO> createUserCommandHandler)
+    public CreateUserEndpoint(IMediator mediator)
     {
-        _createUserCommandHandler = createUserCommandHandler;
+        _mediator = mediator;
     }
 
     public override void Configure()
     {
         Post("/api/users");
         AllowAnonymous(); // Or use RequireAuthorization() for protected endpoints
-        Description(d => d
-            .Produces<UserDTO>(200)
-            .ProducesProblemDetails(400)
-            .ProducesProblemDetails(404));
     }
 
     public override async Task<Results<Ok<UserDTO>, NotFound, ProblemDetails>> ExecuteAsync(
@@ -205,7 +230,7 @@ public class CreateUserEndpoint : BaseEndpoint<UserRequest, Results<Ok<UserDTO>,
         CancellationToken cancellationToken)
     {
         CreateUserCommand createUserCommand = new(request);
-        Result<UserDTO> result = await _createUserCommandHandler.Handle(createUserCommand, cancellationToken);
+        Result<UserDTO> result = await _mediator.Send<CreateUserCommand, UserDTO>(createUserCommand, cancellationToken);
 
         if (result.IsFailure)
         {
@@ -568,17 +593,7 @@ Here's a complete example combining all patterns:
 ### Command
 
 ```csharp
-public sealed class UpdateUserCommand : ICommand<UserDTO>
-{
-    public Guid Id { get; }
-    public UserRequest UserRequest { get; }
-
-    public UpdateUserCommand(Guid id, UserRequest userRequest)
-    {
-        Id = id;
-        UserRequest = userRequest;
-    }
-}
+public record UpdateUserCommand(UserRequest UserRequest) : ICommand<UserDTO>;
 ```
 
 ### Handler
@@ -642,11 +657,11 @@ public sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand
 ```csharp
 public class UpdateUserEndpoint : BaseEndpoint<UserRequest, Results<Ok<UserDTO>, NotFound, ProblemDetails>, UserDTO>
 {
-    private readonly ICommandHandler<UpdateUserCommand, UserDTO> _updateUserCommandHandler;
+    private readonly IMediator _mediator;
 
-    public UpdateUserEndpoint(ICommandHandler<UpdateUserCommand, UserDTO> updateUserCommandHandler)
+    public UpdateUserEndpoint(IMediator mediator)
     {
-        _updateUserCommandHandler = updateUserCommandHandler;
+        _mediator = mediator;
     }
 
     public override void Configure()
@@ -661,7 +676,7 @@ public class UpdateUserEndpoint : BaseEndpoint<UserRequest, Results<Ok<UserDTO>,
     {
         Guid id = Route<Guid>("id");
         UpdateUserCommand command = new(id, request);
-        Result<UserDTO> result = await _updateUserCommandHandler.Handle(command, cancellationToken);
+        Result<UserDTO> result = await _mediator.Send<UpdateUserCommand, UserDTO>(command, cancellationToken);
 
         if (result.IsFailure)
         {
@@ -673,6 +688,193 @@ public class UpdateUserEndpoint : BaseEndpoint<UserRequest, Results<Ok<UserDTO>,
 }
 ```
 
+## Mediator Usage Examples
+
+### Example 1: Command with Return Value
+
+```csharp
+// Endpoint using mediator to send a command that returns a value
+public class CreateUserEndpoint : BaseEndpoint<UserRequest, Results<Ok<UserDTO>, ProblemDetails>, UserDTO>
+{
+    private readonly IMediator _mediator;
+
+    public CreateUserEndpoint(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    public override async Task<Results<Ok<UserDTO>, ProblemDetails>> ExecuteAsync(
+        UserRequest request, 
+        CancellationToken cancellationToken)
+    {
+        CreateUserCommand command = new(request);
+        Result<UserDTO> result = await _mediator.Send<CreateUserCommand, UserDTO>(command, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return HandleErrors(result);
+        }
+
+        return TypedResults.Ok(result.Value);
+    }
+}
+```
+
+### Example 2: Command without Return Value
+
+```csharp
+// Endpoint using mediator to send a command that doesn't return a value
+public class DeleteUserEndpoint : BaseEndpoint<EmptyRequest, Results<NoContent, ProblemDetails>, UserDTO>
+{
+    private readonly IMediator _mediator;
+
+    public DeleteUserEndpoint(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    public override async Task<Results<NoContent, ProblemDetails>> ExecuteAsync(
+        EmptyRequest request, 
+        CancellationToken cancellationToken)
+    {
+        string? id = Route<string>("id");
+        if (id is null || !Guid.TryParse(id, out Guid userId))
+        {
+            return GetNotFoundResponse();
+        }
+
+        DeleteUserCommand command = new(userId);
+        Result result = await _mediator.Send(command, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return HandleErrors(result);
+        }
+
+        return TypedResults.NoContent();
+    }
+}
+```
+
+### Example 3: Query
+
+```csharp
+// Endpoint using mediator to send a query
+public class GetUserEndpoint : BaseEndpoint<EmptyRequest, Results<Ok<UserDTO>, ProblemDetails>, UserDTO>
+{
+    private readonly IMediator _mediator;
+
+    public GetUserEndpoint(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    public override async Task<Results<Ok<UserDTO>, ProblemDetails>> ExecuteAsync(
+        EmptyRequest request, 
+        CancellationToken cancellationToken)
+    {
+        string? id = Route<string>("id");
+        if (id is null || !Guid.TryParse(id, out Guid userId))
+        {
+            return GetNotFoundResponse();
+        }
+
+        ReadUserQuery query = new(userId);
+        Result<UserDTO> result = await _mediator.Send<ReadUserQuery, UserDTO>(query, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return HandleErrors(result);
+        }
+
+        return TypedResults.Ok(result.Value);
+    }
+}
+```
+
+### Example 4: Query Returning a List
+
+```csharp
+// Endpoint using mediator to send a query that returns a list
+public class GetUsersEndpoint : BaseEndpoint<EmptyRequest, Results<Ok<IList<UserDTO>>, ProblemDetails>, IList<UserDTO>>
+{
+    private readonly IMediator _mediator;
+
+    public GetUsersEndpoint(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    public override async Task<Results<Ok<IList<UserDTO>>, ProblemDetails>> ExecuteAsync(
+        EmptyRequest request, 
+        CancellationToken cancellationToken)
+    {
+        ReadUserListQuery query = new();
+        Result<IList<UserDTO>> result = await _mediator.Send<ReadUserListQuery, IList<UserDTO>>(query, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return HandleErrors(result);
+        }
+
+        return TypedResults.Ok(result.Value);
+    }
+}
+```
+
+## Pipeline Behaviors
+
+The mediator automatically applies registered pipeline behaviors to all requests. This allows cross-cutting concerns like logging, validation, and caching to be applied automatically.
+
+### How Pipeline Behaviors Work
+
+When you send a request through the mediator:
+
+1. The mediator finds the appropriate handler
+2. It builds a pipeline of registered behaviors
+3. Each behavior wraps the next in the chain
+4. The request flows through all behaviors before reaching the handler
+5. The response flows back through all behaviors
+
+### Example: Logging Behavior
+
+The `LoggingPipelineBehavior` automatically logs all requests and responses:
+
+```csharp
+// This behavior is automatically applied to all requests
+public class LoggingPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+{
+    private readonly ILogger _logger;
+
+    public async Task<TResponse> HandleAsync(
+        TRequest request, 
+        CancellationToken cancellationToken, 
+        Func<Task<TResponse>> next)
+    {
+        _logger.LogInformation("Handling {RequestType}", typeof(TRequest).Name);
+        
+        var stopwatch = Stopwatch.StartNew();
+        var result = await next();
+        stopwatch.Stop();
+        
+        _logger.LogInformation("Completed {RequestType} in {ElapsedMs}ms", 
+            typeof(TRequest).Name, stopwatch.ElapsedMilliseconds);
+        
+        return result;
+    }
+}
+```
+
+### Registering Pipeline Behaviors
+
+Pipeline behaviors are registered in `Application/DependencyInjection.cs`:
+
+```csharp
+services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>));
+```
+
+The order of registration matters - behaviors are applied in reverse order of registration.
+
 ## Best Practices Demonstrated
 
 1. **Separation of Concerns**: Each layer has clear responsibilities
@@ -682,4 +884,6 @@ public class UpdateUserEndpoint : BaseEndpoint<UserRequest, Results<Ok<UserDTO>,
 5. **Factory Methods**: Entities created via static factory methods
 6. **DTOs**: Domain entities never exposed to API layer
 7. **Dependency Injection**: All dependencies injected via constructor
+8. **Mediator Pattern**: Use mediator to decouple endpoints from handlers
+9. **Pipeline Behaviors**: Use behaviors for cross-cutting concerns
 

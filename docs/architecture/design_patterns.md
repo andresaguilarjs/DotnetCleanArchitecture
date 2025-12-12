@@ -84,17 +84,42 @@ public sealed class ReadUserQueryHandler : IQueryHandler<ReadUserQuery, UserDTO>
 ## 2. Mediator Pattern
 
 ### Purpose
-Decouples request senders from request handlers, allowing multiple handlers to process requests through a pipeline.
+Decouples request senders from request handlers, allowing multiple handlers to process requests through a pipeline. The mediator acts as a central hub for routing commands and queries to their respective handlers while applying cross-cutting concerns through pipeline behaviors.
 
 ### Implementation
 
-Custom mediator implementation using handlers:
+#### Mediator Interface
+
+The mediator provides two `Send` methods:
 
 ```csharp
-// Command handler interface
+public interface IMediator
+{
+    // For commands that return Result (no value)
+    Task<Result> Send<TRequest>(TRequest request, CancellationToken cancellationToken) 
+        where TRequest : ICommand;
+    
+    // For commands/queries that return Result<TResponse>
+    Task<Result<TResponse>> Send<TRequest, TResponse>(
+        TRequest request, 
+        CancellationToken cancellationToken) 
+        where TRequest : IBaseRequest;
+}
+```
+
+#### Handler Interfaces
+
+```csharp
+// Command handler interface (with return value)
 public interface ICommandHandler<TCommand, TResult>
 {
     Task<Result<TResult>> Handle(TCommand command, CancellationToken cancellationToken);
+}
+
+// Command handler interface (no return value)
+public interface ICommandHandler<TCommand>
+{
+    Task<Result> Handle(TCommand command, CancellationToken cancellationToken);
 }
 
 // Query handler interface
@@ -104,22 +129,147 @@ public interface IQueryHandler<TQuery, TResponse>
 }
 ```
 
-Handlers are registered in dependency injection:
+#### Registration
+
+The mediator and handlers are registered in dependency injection:
 
 ```csharp
+// Register mediator
+services.AddScoped<IMediator, Application.Mediator.Mediator>();
+
+// Register command handlers
 services.AddScoped<ICommandHandler<CreateUserCommand, UserDTO>, CreateUserCommandHandler>();
+services.AddScoped<ICommandHandler<DeleteUserCommand>, DeleteUserCommandHandler>();
+
+// Register query handlers
 services.AddScoped<IQueryHandler<ReadUserQuery, UserDTO>, ReadUserQueryHandler>();
+services.AddScoped<IQueryHandler<ReadUserListQuery, IList<UserDTO>>, ReadUserListQueryHandler>();
 ```
 
+### Usage in Endpoints
+
+Endpoints inject `IMediator` and use it to send commands/queries:
+
+#### Example 1: Command with Return Value
+
+```csharp
+public class CreateUserEndpoint : BaseEndpoint<UserRequest, Results<Ok<UserDTO>, ProblemDetails>, UserDTO>
+{
+    private readonly IMediator _mediator;
+
+    public CreateUserEndpoint(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    public override async Task<Results<Ok<UserDTO>, ProblemDetails>> ExecuteAsync(
+        UserRequest request, 
+        CancellationToken cancellationToken)
+    {
+        CreateUserCommand command = new(request);
+        Result<UserDTO> result = await _mediator.Send<CreateUserCommand, UserDTO>(
+            command, 
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return HandleErrors(result);
+        }
+
+        return TypedResults.Ok(result.Value);
+    }
+}
+```
+
+#### Example 2: Command without Return Value
+
+```csharp
+public class DeleteUserEndpoint : BaseEndpoint<EmptyRequest, Results<NoContent, ProblemDetails>, UserDTO>
+{
+    private readonly IMediator _mediator;
+
+    public DeleteUserEndpoint(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    public override async Task<Results<NoContent, ProblemDetails>> ExecuteAsync(
+        EmptyRequest request, 
+        CancellationToken cancellationToken)
+    {
+        DeleteUserCommand command = new(userId);
+        Result result = await _mediator.Send(command, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return HandleErrors(result);
+        }
+
+        return TypedResults.NoContent();
+    }
+}
+```
+
+#### Example 3: Query
+
+```csharp
+public class GetUserEndpoint : BaseEndpoint<EmptyRequest, Results<Ok<UserDTO>, ProblemDetails>, UserDTO>
+{
+    private readonly IMediator _mediator;
+
+    public GetUserEndpoint(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    public override async Task<Results<Ok<UserDTO>, ProblemDetails>> ExecuteAsync(
+        EmptyRequest request, 
+        CancellationToken cancellationToken)
+    {
+        ReadUserQuery query = new(userId);
+        Result<UserDTO> result = await _mediator.Send<ReadUserQuery, UserDTO>(
+            query, 
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return HandleErrors(result);
+        }
+
+        return TypedResults.Ok(result.Value);
+    }
+}
+```
+
+### Pipeline Behavior Integration
+
+The mediator automatically applies registered pipeline behaviors to all requests. This allows cross-cutting concerns (logging, validation, caching, etc.) to be applied automatically without modifying endpoints or handlers.
+
+**Pipeline Flow:**
+1. Endpoint calls `mediator.Send()`
+2. Mediator finds the appropriate handler
+3. Mediator builds a pipeline of registered behaviors
+4. Request flows through behaviors (in reverse registration order)
+5. Handler processes the request
+6. Response flows back through behaviors
+7. Result is returned to endpoint
+
+See the [Pipeline Behavior Pattern](#5-pipeline-behavior-pattern) section for more details.
+
 ### Benefits
-- **Decoupling**: Requesters don't know about handlers
+- **Decoupling**: Endpoints don't need to know about specific handlers
 - **Single Responsibility**: Each handler handles one request type
-- **Testability**: Easy to test handlers in isolation
-- **Extensibility**: Easy to add new handlers
+- **Testability**: Easy to test handlers and endpoints in isolation
+- **Extensibility**: Easy to add new handlers without modifying existing code
+- **Cross-cutting Concerns**: Pipeline behaviors apply automatically to all requests
+- **Consistency**: All requests follow the same flow through the mediator
 
 ### Location
-- Interfaces: `Application/Abstractions/Messaging/`
-- Handlers: `Application/{Feature}/Commands/` and `Application/{Feature}/Queries/`
+- Mediator Interface: `Application/Abstractions/Messaging/IMediator.cs`
+- Mediator Implementation: `Application/Mediator/Mediator.cs`
+- Handler Interfaces: `Application/Abstractions/Messaging/`
+- Command Handlers: `Application/{Feature}/Commands/`
+- Query Handlers: `Application/{Feature}/Queries/`
 
 ## 3. Repository Pattern
 

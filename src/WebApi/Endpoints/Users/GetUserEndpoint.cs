@@ -10,11 +10,11 @@ namespace WebApi.Endpoints.Users;
 
 public class GetUserEndpoint : BaseEndpoint<EmptyRequest, Results<Ok<UserDTO>, ProblemDetails>, UserDTO>
 {
-    private readonly IQueryHandler<ReadUserQuery, UserDTO> _readUserQueryHandler;
+    private readonly IMediator _mediator;
 
-    public GetUserEndpoint(IQueryHandler<ReadUserQuery, UserDTO> readUserQueryHandler)
+    public GetUserEndpoint(IMediator mediator)
     {
-        _readUserQueryHandler = readUserQueryHandler;
+        _mediator = mediator;
     }
 
     public override void Configure()
@@ -32,7 +32,7 @@ public class GetUserEndpoint : BaseEndpoint<EmptyRequest, Results<Ok<UserDTO>, P
         }
 
         ReadUserQuery readUserQuery = new(userId);
-        Result<UserDTO> result = await _readUserQueryHandler.Handle(readUserQuery, cancelationToken);
+        Result<UserDTO> result = await _mediator.Send<ReadUserQuery, UserDTO>(readUserQuery, cancelationToken);
 
         if (result.IsFailure)
         {

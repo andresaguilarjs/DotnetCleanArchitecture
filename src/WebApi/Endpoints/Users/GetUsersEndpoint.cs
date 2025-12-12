@@ -10,11 +10,11 @@ namespace WebApi.Endpoints.Users;
 
 public class GetUsersEndpoint : BaseEndpoint<EmptyRequest, Results<Ok<IList<UserDTO>>, NotFound, ProblemDetails>, IList<UserDTO>>
 {
-    private readonly IQueryHandler<ReadUserListQuery, IList<UserDTO>> _userListQueryHandler;
+    private readonly IMediator _mediator;
 
-    public GetUsersEndpoint(IQueryHandler<ReadUserListQuery, IList<UserDTO>> userListQueryHandler)
+    public GetUsersEndpoint(IMediator mediator)
     {
-        _userListQueryHandler = userListQueryHandler;
+        _mediator = mediator;
     }
 
     public override void Configure()
@@ -26,7 +26,7 @@ public class GetUsersEndpoint : BaseEndpoint<EmptyRequest, Results<Ok<IList<User
     public override async Task<Results<Ok<IList<UserDTO>>, NotFound, ProblemDetails>> ExecuteAsync(EmptyRequest request, CancellationToken cancelationToken)
     {
         ReadUserListQuery readUserListQuery = new();
-        Result<IList<UserDTO>> users = await _userListQueryHandler.Handle(readUserListQuery, cancelationToken);
+        Result<IList<UserDTO>> users = await _mediator.Send<ReadUserListQuery, IList<UserDTO>>(readUserListQuery, cancelationToken);
 
         if (users.IsFailure)
         {
