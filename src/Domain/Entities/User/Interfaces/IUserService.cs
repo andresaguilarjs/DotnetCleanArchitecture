@@ -12,7 +12,7 @@ public interface IUserService
     /// <param name="firstName"></param>
     /// <param name="lastName"></param>
     /// <returns></returns>
-    Result<UserEntity> CreateUserEntity(string email, string firstName, string lastName);
+    Task<Result<UserEntity>> CreateUserEntityAsync(string email, string firstName, string lastName);
 
     /// <summary>
     /// Update a user entity after validating the user value objects.
@@ -22,7 +22,7 @@ public interface IUserService
     /// <param name="firstName"></param>
     /// <param name="lastName"></param>
     /// <returns></returns>
-    Result<UserEntity> UpdateUserEntity(UserEntity user, string email, string firstName, string lastName);
+    Task<Result<UserEntity>> UpdateUserEntityAsync(UserEntity user, string email, string firstName, string lastName);
 
     /// <summary>
     /// Create the user value objects.

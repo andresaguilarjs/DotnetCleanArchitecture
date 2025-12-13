@@ -21,7 +21,7 @@ public sealed class CreateUserCommandHandler : ICommandHandler<CreateUserCommand
 
     public async Task<Result<UserDTO>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {
-        Result<UserEntity> user = _userService.CreateUserEntity(request.UserRequest.Email, request.UserRequest.FirstName, request.UserRequest.LastName);
+        Result<UserEntity> user = await _userService.CreateUserEntityAsync(request.UserRequest.Email, request.UserRequest.FirstName, request.UserRequest.LastName);
 
         if (user.IsFailure)
         {

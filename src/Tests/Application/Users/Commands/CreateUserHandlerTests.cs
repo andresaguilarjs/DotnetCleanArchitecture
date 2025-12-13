@@ -1,4 +1,3 @@
-using Application;
 using Application.Users;
 using Application.Users.Commands.CreateUser;
 using Application.Users.Services;
@@ -8,7 +7,6 @@ using Domain.Entities.User.Interfaces;
 using FluentAssertions;
 using Infrastructure.Database.Repositories.Command;
 using Infrastructure.Database.Repositories.Query;
-using Moq;
 
 namespace Tests.Application.Users.Commands;
 
@@ -17,20 +15,27 @@ public class CreateUserHandlerTests : BaseTest
     private readonly IUserCommandRepository _userCommandRepository;
     private readonly IUserQueryRepository _userQueryRepository;
     private readonly CreateUserCommandHandler _handler;
+    
     public CreateUserHandlerTests() : base()
     {
         _userQueryRepository = new UserQueryRepository(_dbContext);
         _userCommandRepository = new UserCommandRepository(_dbContext, _userQueryRepository);
         _handler = new CreateUserCommandHandler(_unitOfWorkMock.Object, _userCommandRepository, new UserService(_userQueryRepository));
+    }
 
-        InMemoryDatabase.UserSeeding(_dbContext).Wait();
+    /// <summary>
+    /// InitializeAsync is called after the constructor to perform async setup (e.g., seeding the database).
+    /// </summary>
+    public override async Task InitializeAsync()
+    {
+        await InMemoryDatabase.UsersSeeding(_dbContext, CancellationToken.None);
     }
 
     [Fact]
     public async Task Handle_WhenCalledWithValidCommand_ShouldAddUserAndCommit()
     {
         // Arrange
-        UserRequest request = new ("mock2@gmail.com", "Mock", "User");
+        UserRequest request = new ("mock@gmail.com", "Mock", "User");
         CreateUserCommand command = new (request);
 
         // Act
@@ -45,7 +50,7 @@ public class CreateUserHandlerTests : BaseTest
     }
 
     [Fact]
-    public async Task Handle_WhenCalledWithInValidCommand_ShouldFail()
+    public async Task Handle_WhenCalledWithInvalidCommand_ShouldFail()
     {
         // Arrange
         UserRequest request = new("mock", "", "");
@@ -64,8 +69,10 @@ public class CreateUserHandlerTests : BaseTest
     public async Task Handle_WhenCalledWithDuplicateEmail_ShouldFail()
     {
         // Arrange
-        UserEntity existingUser = _userQueryRepository.ListAllAsync().Result.Value.First();
-        UserRequest request = new(existingUser.Email.Value, existingUser.FirstName.Value, existingUser.LastName.Value);
+        Result<IReadOnlyList<UserEntity>> users = await _userQueryRepository.ListAllAsync();
+        UserEntity firstUser = users.Value.First();
+
+        UserRequest request = new(firstUser.Email.Value, firstUser.FirstName.Value, firstUser.LastName.Value);
         CreateUserCommand command = new(request);
 
         // Act

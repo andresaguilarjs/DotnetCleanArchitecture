@@ -35,7 +35,7 @@ internal sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserComma
             return Result<UserDTO>.Failure( new List<Error>() { GenericErrors.NotFound((Guid)request.UserRequest.Id, typeof(UserDTO)) });
         }
 
-        user = _userService.UpdateUserEntity(user, request.UserRequest.Email, request.UserRequest.FirstName, request.UserRequest.LastName);
+        user = await _userService.UpdateUserEntityAsync(user, request.UserRequest.Email, request.UserRequest.FirstName, request.UserRequest.LastName);
 
         if (user.IsFailure)
         {

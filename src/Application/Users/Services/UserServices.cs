@@ -25,13 +25,13 @@ public sealed class UserService : IUserService
     /// <param name="firstName"></param>
     /// <param name="lastName"></param>
     /// <returns></returns>
-    public Result<UserEntity> CreateUserEntity(string email, string firstName, string lastName)
+    public async Task<Result<UserEntity>> CreateUserEntityAsync(string email, string firstName, string lastName)
     {
         (Result<Email> emailValue, Result<FirstName> firstNameValue, Result<LastName> lastNameValue) = CreateUserValueObjects(email, firstName, lastName);
 
         IList<Error> errors = ValidateUserValueObjects(emailValue, firstNameValue, lastNameValue);
 
-        if (emailValue.IsSuccess && !IsEmailAvailable(emailValue))
+        if (emailValue.IsSuccess && !await IsEmailAvailable(emailValue))
         {
             errors.Add(UserErrors.EmailAlreadyInUse(email));
         }
@@ -52,13 +52,13 @@ public sealed class UserService : IUserService
     /// <param name="firstName"></param>
     /// <param name="lastName"></param>
     /// <returns></returns>
-    public Result<UserEntity> UpdateUserEntity(UserEntity user, string email, string firstName, string lastName)
+    public async Task<Result<UserEntity>> UpdateUserEntityAsync(UserEntity user, string email, string firstName, string lastName)
     {
         (Result<Email> emailValue, Result<FirstName> firstNameValue, Result<LastName> lastNameValue) = CreateUserValueObjects(email, firstName, lastName);
 
         IList<Error> errors = ValidateUserValueObjects(emailValue, firstNameValue, lastNameValue);
 
-        if (!CanChangeEmail(user.Email, emailValue))
+        if (!await CanChangeEmail(user.Email, emailValue))
         {
             errors.Add(UserErrors.EmailAlreadyInUse(emailValue.Value.Value));
         }
@@ -125,11 +125,11 @@ public sealed class UserService : IUserService
     /// <param name="currentEmail"></param>
     /// <param name="newEmail"></param>
     /// <returns></returns>
-    private bool CanChangeEmail(Email currentEmail, Email newEmail)
+    private async Task<bool> CanChangeEmail(Email currentEmail, Email newEmail)
     {
         if (currentEmail != newEmail)
         {
-            return IsEmailAvailable(newEmail);
+            return await IsEmailAvailable(newEmail);
         }
 
         return true;
@@ -140,9 +140,9 @@ public sealed class UserService : IUserService
     /// </summary>
     /// <param name="email"></param>
     /// <returns></returns>
-    private bool IsEmailAvailable(Email email)
+    private async Task<bool> IsEmailAvailable(Email email)
     {
-        Result<UserEntity> userByEmail = _userQueryRepository.GetByEmailAsync(email).Result;
+        Result<UserEntity> userByEmail = await _userQueryRepository.GetByEmailAsync(email);
         return userByEmail.IsFailure;
     }
 }
