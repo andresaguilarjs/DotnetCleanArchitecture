@@ -42,7 +42,12 @@ internal sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserComma
             return Result<UserDTO>.Failure(user.Errors);
         }
 
-        _userCommandRepository.Update(user);
+        Result result = await _userCommandRepository.UpdateAsync(user, cancellationToken);
+        if (result.IsFailure)
+        {
+            return Result<UserDTO>.Failure(result.Errors);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result<UserDTO>.Success(UserMapper.Map(user));

@@ -38,6 +38,13 @@ public sealed class Result
     /// <param name="error">The error associated with the failed operation.</param>
     /// <returns>A new instance of <see cref="Result"/> representing a failed operation.</returns>
     public static Result Failure(Error error) => new Result(false, new List<Error>{ error });
+
+    /// <summary>
+    /// Creates a new failed result with the specified errors.
+    /// </summary>
+    /// <param name="errors">A list of errors associated with the failed operation.</param>
+    /// <returns>A new instance of <see cref="Result"/> representing a failed operation.</returns>
+    public static Result Failure(IList<Error> errors) => new Result(false, errors ?? new List<Error>());
 }
 
 /// <summary>
@@ -86,6 +93,13 @@ public sealed class Result<TResult>
     /// <param name="errors">A list of errors associated with the failed operation.</param>
     /// <returns>A new instance of <see cref="Result{TResult}"/> representing a failed operation.</returns>
     public static Result<TResult> Failure(IList<Error> errors) => new Result<TResult>(false, errors, default!);
+
+    /// <summary>
+    /// Creates a failed result with the specified error.
+    /// </summary>
+    /// <param name="error">The error that describes the reason for the failure. Cannot be null.</param>
+    /// <returns>A <see cref="Result{TResult}"/> instance representing a failed operation containing the specified error.</returns>
+    public static Result<TResult> Failure(Error error) => new Result<TResult>(false, new List<Error>{ error }, default!);
 
     /// <summary>
     /// Implicitly converts a <see cref="Result{TResult}"/> to its value.

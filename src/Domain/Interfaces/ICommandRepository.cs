@@ -22,7 +22,8 @@ public interface ICommandRepository<T> where T : BaseEntity
     /// </summary>
     /// <param name="entity">The entity to update.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    void Update(T entity, CancellationToken cancellationToken = default);
+    /// <returns>A task that represents the asynchronous operation. The task result indicates success or failure.</returns>
+    Task<Result> UpdateAsync(T entity, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Asynchronously deletes an entity from the repository using its unique identifier.

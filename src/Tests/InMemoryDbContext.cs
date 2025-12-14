@@ -17,7 +17,7 @@ internal static class InMemoryDatabase
     /// <summary>
     /// GetDbContext method to create a new instance of the ApplicationDbContext
     /// </summary>
-    /// <returns></returns>
+    /// <returns>A new instance of the <see cref="ApplicationDbContext"/>.</returns>
     public static ApplicationDbContext GetDbContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -37,8 +37,7 @@ internal static class InMemoryDatabase
     /// <returns></returns>
     public static async Task UsersSeeding(ApplicationDbContext dbContext, CancellationToken cancellationToken = default)
     {
-        UserQueryRepository userQueryRepository = new(dbContext);
-        UserCommandRepository userCommandRepository = new(dbContext, userQueryRepository);
+        UserCommandRepository userCommandRepository = new(dbContext);
 
         for (int i = 0; i < 10; i++)
         {
@@ -48,7 +47,7 @@ internal static class InMemoryDatabase
 
             ValidateUserValueObjects(email, firstName, lastName, i);
 
-            UserEntity user = UserEntity.Create(email, firstName, lastName);
+            UserEntity user = UserEntity.Create(email.Value, firstName.Value, lastName.Value);
             Result<UserEntity> addResult = await userCommandRepository.AddAsync(user, cancellationToken);
 
             if (addResult.IsFailure)
