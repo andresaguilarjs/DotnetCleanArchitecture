@@ -463,40 +463,126 @@ services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<
 ## 6. Unit of Work Pattern
 
 ### Purpose
-Maintains a list of objects affected by a business transaction and coordinates writing out changes and resolving concurrency problems.
+Maintains a list of objects affected by a business transaction and coordinates writing out changes and resolving concurrency problems. The implementation includes comprehensive error handling for database exceptions, ensuring that all database errors are properly caught, logged, and converted to domain errors using the Result pattern.
 
 ### Implementation
+
+#### Interface
 
 ```csharp
 // Unit of Work interface
 public interface IUnitOfWork
 {
-    Task SaveChangesAsync(CancellationToken cancellationToken);
-}
-
-// Implementation
-public class UnitOfWork : IUnitOfWork
-{
-    private readonly ApplicationDbContext _context;
-    
-    public async Task SaveChangesAsync(CancellationToken cancellationToken)
-    {
-        await _context.SaveChangesAsync(cancellationToken);
-    }
+    Task<Result> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
 ```
 
-### Usage
+#### Implementation
+
+The `UnitOfWork` implementation provides robust error handling for various database exceptions:
 
 ```csharp
-await _userRepository.AddAsync(user);
-await _unitOfWork.SaveChangesAsync(cancellationToken);
+public sealed class UnitOfWork(ApplicationDbContext context, ILogger<UnitOfWork> logger) : IUnitOfWork
+{
+    private readonly ApplicationDbContext _context = context;
+    private readonly ILogger<UnitOfWork> _logger = logger;
+    
+    public async Task<Result> SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+        await _context.SaveChangesAsync(cancellationToken);
+            return Result.Success();
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Concurrency conflict occurred while saving changes to the database.");
+            return Result.Failure(new Error(
+                ErrorCode.Conflict,
+                "The data may have been modified or deleted since it was last read. " +
+                "It is recommended to refresh the data and try again."
+            ));
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database update error occurred while saving changes to the database.");
+            
+            string message = ex.InnerException?.Message ?? ex.Message;
+            if (message.Contains("UNIQUE") || message.Contains("duplicate key"))
+            {
+                return Result.Failure(new Error(
+                    ErrorCode.Conflict,
+                    "There was a conflict with the database. Please try again."
+                ));
+            }
+            
+            return Result.Failure(GenericErrors.SomethingWhenWrong());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An unexpected error occurred while saving changes to the database.");
+            return Result.Failure(GenericErrors.SomethingWhenWrong());
+    }
+}
+}
+```
+
+### Error Handling
+
+The `UnitOfWork` handles three types of exceptions:
+
+1. **DbUpdateConcurrencyException**: Occurs when a concurrency conflict is detected (e.g., optimistic concurrency violation)
+   - Returns a `Conflict` error with a user-friendly message
+   - Logged as a warning (expected in concurrent scenarios)
+
+2. **DbUpdateException**: General database update exceptions, including:
+   - **Unique constraint violations**: Detected by checking for "UNIQUE" or "duplicate key" in the error message
+     - Returns a `Conflict` error
+   - **Other database errors**: Returns a generic internal server error
+   - All logged as errors
+
+3. **Exception**: Any other unexpected exceptions
+   - Returns a generic internal server error
+   - Logged as an error
+
+### Usage
+
+Handlers must check the result of `SaveChangesAsync` to handle potential errors:
+
+```csharp
+public async Task<Result<UserDTO>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
+{
+    // ... Code related to this command will be here
+    
+    // Check the result of SaveChangesAsync
+    Result result = await _unitOfWork.SaveChangesAsync(cancellationToken);
+    if (result.IsFailure)
+    {
+        return Result<UserDTO>.Failure(result.Errors);
+    }
+
+    return Result<UserDTO>.Success(UserMapper.Map(user));
+}
 ```
 
 ### Benefits
 - **Transaction management**: Ensures all changes are saved atomically
 - **Consistency**: Maintains data consistency across multiple repositories
 - **Performance**: Can batch multiple operations
+- **Error handling**: Comprehensive exception handling with proper logging
+- **Result pattern**: Returns `Result` instead of throwing exceptions, making errors explicit
+- **Specific error messages**: Provides meaningful error messages for different failure scenarios
+- **Logging**: All exceptions are logged with appropriate log levels
+
+### Error Scenarios
+
+| Scenario | Exception Type | Error Code | Log Level |
+|----------|---------------|------------|-----------|
+| Successful save | None | Success | N/A |
+| Concurrency conflict | `DbUpdateConcurrencyException` | `Conflict` (409) | Warning |
+| Unique constraint violation | `DbUpdateException` | `Conflict` (409) | Error |
+| Other database errors | `DbUpdateException` | `InternalServerError` (500) | Error |
+| Unexpected errors | `Exception` | `InternalServerError` (500) | Error |
 
 ### Location
 - Interface: `Domain/Interfaces/IUnitOfWork.cs`

@@ -29,7 +29,11 @@ public sealed class CreateUserCommandHandler : ICommandHandler<CreateUserCommand
         }
 
         await _userCommandRepository.AddAsync(user);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        Result result = await _unitOfWork.SaveChangesAsync(cancellationToken);
+        if (result.IsFailure)
+        {
+            return Result<UserDTO>.Failure(result.Errors);
+        }
 
         return Result<UserDTO>.Success(UserMapper.Map(user));
     }
