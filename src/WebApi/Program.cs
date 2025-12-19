@@ -1,15 +1,17 @@
 using Application;
-using Application.Extensions;
-using Infrastructure;
-using WebApi;
 using FastEndpoints;
+using Infrastructure;
 using Scalar.AspNetCore;
+using WebApi;
+using WebApi.Exceptions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
 builder.Services.AddFastEndpoints();
+builder.Services.AddProblemDetails();
 
 // Add services from other projects
 builder.Services.AddApplication();
@@ -17,7 +19,6 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddPresentation();
 
 var app = builder.Build();
-app.UseCustomMiddleware();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -32,7 +33,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.MapControllers();
+app.UseExceptionHandler();
 app.MapHealthChecks("/health");
 app.UseFastEndpoints();
 

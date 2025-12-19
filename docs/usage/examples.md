@@ -394,6 +394,53 @@ if (result.IsFailure)
 }
 ```
 
+### Global Exception Handling
+
+The application uses a `GlobalExceptionHandler` that catches all unhandled exceptions. This complements the Result pattern by handling unexpected exceptions that escape the normal flow.
+
+**How it works:**
+- All unhandled exceptions are automatically caught by the `GlobalExceptionHandler`
+- Exceptions are converted to standardized `ProblemDetails` responses
+- Different exception types are mapped to appropriate HTTP status codes
+- In development mode, detailed error information (including stack traces) is returned
+- In production mode, generic error messages are returned for security
+
+**Exception Type Mappings:**
+```csharp
+// The handler automatically maps exceptions to HTTP status codes:
+ArgumentException / ArgumentNullException → 400 Bad Request
+UnauthorizedAccessException → 401 Unauthorized
+KeyNotFoundException → 404 Not Found
+NotImplementedException → 501 Not Implemented
+Other exceptions → 500 Internal Server Error
+```
+
+**Example: Unhandled Exception**
+
+If an unexpected exception occurs in your code:
+
+```csharp
+public async Task<Result<UserDTO>> Handle(ReadUserQuery request, CancellationToken cancellationToken)
+{
+    // If this throws an unexpected exception (e.g., NullReferenceException),
+    // it will be caught by GlobalExceptionHandler
+    var user = await _userQueryRepository.GetByIdAsync(request.Id);
+    
+    // ... rest of the code
+}
+```
+
+The `GlobalExceptionHandler` will:
+1. Log the exception with full context (request path, trace ID)
+2. Convert it to a ProblemDetails response
+3. Return appropriate HTTP status code
+4. Include detailed information in development, generic message in production
+
+**Best Practice:**
+- Use Result pattern for expected business errors (validation, not found, etc.)
+- Let GlobalExceptionHandler catch unexpected exceptions (system errors, null references, etc.)
+- Never manually catch and swallow exceptions unless you have a specific reason
+
 ## Using the Result Pattern
 
 ### Chaining Operations

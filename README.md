@@ -21,7 +21,7 @@ This project serves as a practical example of Clean Architecture principles, fea
 - ✅ User CRUD operations (Create, Read, Update, Delete)
 - ✅ Soft delete support
 - ✅ Health checks
-- ✅ Exception handling middleware
+- ✅ Global exception handler (IExceptionHandler)
 - ✅ Request/response logging
 - ✅ OpenAPI/Scalar documentation
 - ✅ Value object validation

@@ -19,7 +19,7 @@ public class CreateUserHandlerTests : BaseTest
     public CreateUserHandlerTests() : base()
     {
         _userQueryRepository = new UserQueryRepository(_dbContext);
-        _userCommandRepository = new UserCommandRepository(_dbContext, _userQueryRepository);
+        _userCommandRepository = new UserCommandRepository(_dbContext);
         _handler = new CreateUserCommandHandler(_unitOfWorkMock.Object, _userCommandRepository, new UserService(_userQueryRepository));
     }
 

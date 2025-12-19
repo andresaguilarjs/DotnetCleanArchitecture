@@ -1,7 +1,6 @@
 using Application.Abstractions.Messaging;
 using Application.Abstractions.PipelineBehaviors;
 using Application.Behaviors;
-using Application.Middlewares;
 using Application.Users;
 using Application.Users.Commands.CreateUser;
 using Application.Users.Commands.DeleteUser;
@@ -39,8 +38,7 @@ public static class DependencyInjection
         // Queries
         services.AddScoped<IQueryHandler<ReadUserListQuery, IList<UserDTO>>, ReadUserListQueryHandler>();
         services.AddScoped<IQueryHandler<ReadUserQuery, UserDTO>, ReadUserQueryHandler>();
-
-        services.AddTransient<ExceptionHanddlerMiddleware>();
+        
         return services;
     }
 }

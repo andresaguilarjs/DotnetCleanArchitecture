@@ -22,6 +22,15 @@ public sealed class GenericErrors
     }
 
     /// <summary>
+    /// Represents a generic not found error without specific resource information.
+    /// </summary>
+    /// <returns></returns>
+    public static Error NotFound()
+    {
+        return new Error(ErrorCode.NotFound, $"The requested object was not found.");
+    }
+
+    /// <summary>
     /// Represents an error that occurs when a parameter is null or empty.
     /// </summary>
     /// <param name="parameterName"></param>
@@ -37,6 +46,36 @@ public sealed class GenericErrors
     public static Error SomethingWhenWrong()
     {
         return new Error(ErrorCode.InternalServerError, $"Oops! Something went wrong. Please try again in a moment.");
+    }
+
+    /// <summary>
+    /// Represents an error that occurs when a feature is not implemented.
+    /// </summary>
+    /// <returns></returns>
+    public static Error NotImplemented()
+    {
+        return new Error(
+            ErrorCode.NotImplemented,
+            $"The server either does not recognize the request method, or it lacks the ability to fulfill the request."
+        );
+    }
+
+    /// <summary>
+    /// Represets an error that occurs when there is an argument error in the request.
+    /// </summary>
+    /// <returns></returns>
+    public static Error ArgumentError()
+    {
+        return new Error(ErrorCode.ValidationError, "Oops! Seems there is a wrong parameter in the request that couldn't be identified");
+    }
+
+    /// <summary>
+    /// Represents an error that occurs when the user is not authorized to perform an action.
+    /// </summary>
+    /// <returns></returns>
+    public static Error Unauthorized()
+    {
+        return new Error(ErrorCode.Unauthorized, "You are not authorized to perform this action.");
     }
 
     /// <summary>

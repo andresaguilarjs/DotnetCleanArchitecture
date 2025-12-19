@@ -12,8 +12,9 @@ The project implements several design patterns to achieve separation of concerns
 4. **Result Pattern**
 5. **Pipeline Behavior Pattern**
 6. **Unit of Work Pattern**
-7. **Value Object Pattern**
-8. **Factory Pattern**
+7. **Global Exception Handling Pattern**
+8. **Value Object Pattern**
+9. **Factory Pattern**
 
 ## 1. CQRS (Command Query Responsibility Segregation)
 
@@ -588,7 +589,91 @@ public async Task<Result<UserDTO>> Handle(CreateUserCommand request, Cancellatio
 - Interface: `Domain/Interfaces/IUnitOfWork.cs`
 - Implementation: `Infrastructure/Database/Common/UnitOfWork.cs`
 
-## 7. Value Object Pattern
+## 7. Global Exception Handling Pattern
+
+### Purpose
+Provides centralized exception handling for all unhandled exceptions in the application, ensuring consistent error responses and proper logging. This complements the Result pattern by handling unexpected exceptions that escape the normal application flow.
+
+### Implementation
+
+The application uses .NET 10's `IExceptionHandler` interface for global exception handling,
+implemented in the `GlobalExceptionHandler` class located in WebApi.Exceptions namespace.
+
+### Exception Type Mapping
+
+The handler maps different exception types to appropriate HTTP status codes:
+
+| Exception Type | HTTP Status Code | Error Code |
+|---------------|------------------|------------|
+| `ArgumentException` / `ArgumentNullException` | 400 Bad Request | `BadRequest` |
+| `UnauthorizedAccessException` | 401 Unauthorized | `Unauthorized` |
+| `KeyNotFoundException` | 404 Not Found | `NotFound` |
+| `NotImplementedException` | 501 Not Implemented | `NotImplemented` |
+| Other exceptions | 500 Internal Server Error | `InternalServerError` |
+
+### Environment-Specific Behavior
+
+- **Development Mode**: Returns detailed error information including:
+  - Exception message
+  - Full stack trace
+  - Request path and trace identifier
+  
+- **Production Mode**: Returns generic error messages to avoid exposing internal implementation details
+
+### Registration
+
+The exception handler is registered in `Program.cs`:
+
+```csharp
+// Register the exception handler
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
+var app = builder.Build();
+
+// Enable exception handling middleware
+app.UseExceptionHandler();
+```
+
+### Relationship with Result Pattern
+
+The application uses two complementary error handling approaches:
+
+1. **Result Pattern**: For expected business logic errors
+   - Validation failures
+   - Business rule violations
+   - Not found scenarios
+   - These are handled explicitly in handlers and endpoints
+
+2. **Global Exception Handler**: For unexpected exceptions
+   - System exceptions
+   - Unhandled errors
+   - Framework-level exceptions
+   - These are caught by the global handler
+
+It's not recommended to throw exceptions for business logic errors; instead, use the Result pattern,
+however this handler catches unexpected exceptions and some common framework exceptions to ensure consistent error responses.
+
+### Benefits
+- **Centralized handling**: All unhandled exceptions handled in one place
+- **Consistent responses**: All exceptions return standardized ProblemDetails
+- **Security**: Prevents sensitive information leakage in production
+- **Logging**: All exceptions logged with full context
+- **RFC compliance**: Uses standard ProblemDetails format
+- **Environment awareness**: Different behavior for development vs production
+
+### Best Practices
+- Use Result pattern for expected business errors
+- Let global handler catch unexpected exceptions
+- Never expose stack traces in production
+- Always log exceptions with context (request path, trace ID)
+- Use appropriate HTTP status codes for different exception types
+
+### Location
+- Implementation: `WebApi/Exceptions/GlobalExceptionHandler.cs`
+- Registration: `WebApi/Program.cs`
+
+## 8. Value Object Pattern
 
 ### Purpose
 Represents a descriptive aspect of the domain with no conceptual identity. Value objects are immutable and defined by their attributes.
@@ -660,7 +745,7 @@ public sealed class UserEntity : BaseEntity
 - `Domain/Abstractions/ValueObjects/`
 - `Domain/Entities/{Entity}/ValueObjects/`
 
-## 8. Factory Pattern
+## 9. Factory Pattern
 
 ### Purpose
 Provides a way to create objects without specifying the exact class of object that will be created.
@@ -696,25 +781,13 @@ public sealed class UserEntity : BaseEntity
 ### Location
 - Used in all domain entities: `Domain/Entities/`
 
-## Pattern Interactions
-
-These patterns work together:
-
-1. **CQRS** separates commands and queries
-2. **Repository Pattern** provides data access abstraction for CQRS
-3. **Mediator Pattern** routes commands/queries to handlers
-4. **Result Pattern** provides consistent error handling
-5. **Pipeline Behavior** adds cross-cutting concerns to mediator pipeline
-6. **Unit of Work** coordinates repository operations
-7. **Value Objects** ensure domain integrity
-8. **Factory Pattern** ensures valid entity creation
-
 ## Best Practices
 
 1. **One handler per command/query**: Keep handlers focused
 2. **Use Result pattern**: Don't throw exceptions for business logic errors
-3. **Immutable value objects**: Once created, value objects don't change
-4. **Factory methods**: Use static factory methods for entity creation
-5. **Pipeline behaviors**: Use for cross-cutting concerns, not business logic
-6. **Unit of Work**: Always use for coordinating multiple repository operations
+3. **Global exception handler**: Catches unexpected exceptions, complements Result pattern
+4. **Immutable value objects**: Once created, value objects don't change
+5. **Factory methods**: Use static factory methods for entity creation
+6. **Pipeline behaviors**: Use for cross-cutting concerns, not business logic
+7. **Unit of Work**: Always use for coordinating multiple repository operations
 

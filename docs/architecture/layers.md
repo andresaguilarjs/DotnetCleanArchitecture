@@ -120,13 +120,6 @@ Located in `Application/Behaviors/`:
   - Measures execution time
   - Handles cancellation and exceptions
 
-#### Middleware
-Located in `Application/Middlewares/`:
-- **ExceptionHanddlerMiddleware**: Global exception handler
-  - Catches unhandled exceptions
-  - Returns standardized error responses
-  - Logs errors
-
 #### Abstractions
 - **IBaseRequest**: Base interface for all requests
 - **ICommand**: Marker interface for commands
@@ -228,6 +221,23 @@ All endpoints:
 - **UserRequest**: Request model for user operations
 - Located in `Application/{Feature}/` folders
 
+#### Exception Handling
+Located in `WebApi/Exceptions/`:
+- **GlobalExceptionHandler**: Global exception handler using `IExceptionHandler` interface (.NET 10)
+  - Implements `IExceptionHandler` for centralized exception handling
+  - Catches all unhandled exceptions across the application
+  - Converts exceptions to standardized ProblemDetails responses
+  - Maps exception types to appropriate HTTP status codes:
+    - `ArgumentException` / `ArgumentNullException` → 400 Bad Request
+    - `UnauthorizedAccessException` → 401 Unauthorized
+    - `KeyNotFoundException` → 404 Not Found
+    - `NotImplementedException` → 501 Not Implemented
+    - Other exceptions → 500 Internal Server Error
+  - Provides detailed error information in development mode (includes stack traces)
+  - Returns generic error messages in production mode
+  - Logs all exceptions with request context (method, path, trace identifier)
+  - Registered via `AddExceptionHandler<T>()` and `UseExceptionHandler()` in Program.cs
+
 #### Dependency Injection
 - **DependencyInjection**: Registers presentation services
 - Adds controllers (if using traditional MVC)
@@ -236,7 +246,9 @@ All endpoints:
 #### Program.cs
 - Application entry point
 - Configures services from all layers
-- Sets up middleware pipeline
+- Sets up middleware pipeline including exception handling
+- Registers `GlobalExceptionHandler` via `AddExceptionHandler<T>()`
+- Enables exception handling middleware via `UseExceptionHandler()`
 - Configures OpenAPI/Scalar documentation
 - Maps health check endpoints
 
@@ -281,9 +293,20 @@ Database → Infrastructure Repository → Domain Entity → Application DTO →
 ```
 
 ### Error Flow
+
+**Expected Errors (Result Pattern)**:
 ```
 Any Layer → Result<T>.Failure → Application Handler → WebApi Endpoint → ProblemDetails → HTTP Error Response
 ```
+
+**Unexpected Exceptions (Global Exception Handler)**:
+```
+Any Layer → Unhandled Exception → GlobalExceptionHandler → ProblemDetails → HTTP Error Response
+```
+
+The application uses two complementary error handling approaches:
+1. **Result Pattern**: For expected business logic errors (validation failures, not found, etc.)
+2. **Global Exception Handler**: For unexpected exceptions that escape the normal flow
 
 ## Best Practices
 
@@ -308,6 +331,8 @@ Any Layer → Result<T>.Failure → Application Handler → WebApi Endpoint → 
 4. **WebApi Layer**:
    - HTTP-specific concerns only
    - Use FastEndpoints for endpoints
-   - Standardized error handling
+   - Standardized error handling via GlobalExceptionHandler
+   - Result pattern errors handled in endpoints
+   - Unhandled exceptions caught by global handler
    - API documentation
 
