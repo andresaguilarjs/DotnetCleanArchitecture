@@ -226,16 +226,18 @@ Located in `WebApi/Exceptions/`:
 - **GlobalExceptionHandler**: Global exception handler using `IExceptionHandler` interface (.NET 10)
   - Implements `IExceptionHandler` for centralized exception handling
   - Catches all unhandled exceptions across the application
-  - Converts exceptions to standardized ProblemDetails responses
+  - Converts exceptions to `Error` objects using `GenericErrors`, then to standardized `ProblemDetails` responses via `ErrorToProblemDetailsConverter`
+  - Sets response Content-Type to `"application/problem+json"`
   - Maps exception types to appropriate HTTP status codes:
-    - `ArgumentException` / `ArgumentNullException` → 400 Bad Request
-    - `UnauthorizedAccessException` → 401 Unauthorized
-    - `KeyNotFoundException` → 404 Not Found
-    - `NotImplementedException` → 501 Not Implemented
-    - Other exceptions → 500 Internal Server Error
+    - `ArgumentException` / `ArgumentNullException` → 400 (ErrorCode.ValidationError)
+    - `UnauthorizedAccessException` → 401 (ErrorCode.Unauthorized)
+    - `KeyNotFoundException` → 404 (ErrorCode.NotFound)
+    - `InvalidOperationException` / `NotSupportedException` → 501 (ErrorCode.NotImplemented)
+    - Other exceptions → 500 (ErrorCode.InternalServerError)
   - Provides detailed error information in development mode (includes stack traces)
   - Returns generic error messages in production mode
   - Logs all exceptions with request context (method, path, trace identifier)
+  - Skips handling if HTTP response has already started
   - Registered via `AddExceptionHandler<T>()` and `UseExceptionHandler()` in Program.cs
 
 #### Dependency Injection

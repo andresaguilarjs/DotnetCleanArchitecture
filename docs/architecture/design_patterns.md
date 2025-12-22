@@ -131,7 +131,6 @@ public interface IQueryHandler<TQuery, TResponse>
 ```
 
 #### Registration
-
 The mediator and handlers are registered in dependency injection:
 
 ```csharp
@@ -480,53 +479,7 @@ public interface IUnitOfWork
 
 #### Implementation
 
-The `UnitOfWork` implementation provides robust error handling for various database exceptions:
-
-```csharp
-public sealed class UnitOfWork(ApplicationDbContext context, ILogger<UnitOfWork> logger) : IUnitOfWork
-{
-    private readonly ApplicationDbContext _context = context;
-    private readonly ILogger<UnitOfWork> _logger = logger;
-    
-    public async Task<Result> SaveChangesAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-        await _context.SaveChangesAsync(cancellationToken);
-            return Result.Success();
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            _logger.LogWarning(ex, "Concurrency conflict occurred while saving changes to the database.");
-            return Result.Failure(new Error(
-                ErrorCode.Conflict,
-                "The data may have been modified or deleted since it was last read. " +
-                "It is recommended to refresh the data and try again."
-            ));
-        }
-        catch (DbUpdateException ex)
-        {
-            _logger.LogError(ex, "Database update error occurred while saving changes to the database.");
-            
-            string message = ex.InnerException?.Message ?? ex.Message;
-            if (message.Contains("UNIQUE") || message.Contains("duplicate key"))
-            {
-                return Result.Failure(new Error(
-                    ErrorCode.Conflict,
-                    "There was a conflict with the database. Please try again."
-                ));
-            }
-            
-            return Result.Failure(GenericErrors.SomethingWhenWrong());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An unexpected error occurred while saving changes to the database.");
-            return Result.Failure(GenericErrors.SomethingWhenWrong());
-    }
-}
-}
-```
+The `UnitOfWork` implementation provides robust error handling for various database exceptions.
 
 ### Error Handling
 
@@ -595,33 +548,40 @@ public async Task<Result<UserDTO>> Handle(CreateUserCommand request, Cancellatio
 Provides centralized exception handling for all unhandled exceptions in the application, ensuring consistent error responses and proper logging. This complements the Result pattern by handling unexpected exceptions that escape the normal application flow.
 
 ### Implementation
-
 The application uses .NET 10's `IExceptionHandler` interface for global exception handling,
-implemented in the `GlobalExceptionHandler` class located in WebApi.Exceptions namespace.
+implemented in the `GlobalExceptionHandler` class located in `WebApi.Exceptions` namespace.
 
 ### Exception Type Mapping
+The handler maps different exception types to appropriate HTTP status codes. Exceptions are first converted to `Error` objects using `GenericErrors` methods, then to `ProblemDetails` via `ErrorToProblemDetailsConverter`:
 
-The handler maps different exception types to appropriate HTTP status codes:
+| Exception Type | HTTP Status Code | Error Code | GenericErrors Method |
+|---------------|------------------|------------|---------------------|
+| `ArgumentException` / `ArgumentNullException` | 400 | `ValidationError` | `ArgumentError()` |
+| `UnauthorizedAccessException` | 401 | `Unauthorized` | `Unauthorized()` |
+| `KeyNotFoundException` | 404 | `NotFound` | `NotFound()` |
+| `InvalidOperationException` / `NotSupportedException` | 501 | `NotImplemented` | `NotImplemented()` |
+| Other exceptions | 500 | `InternalServerError` | `SomethingWhenWrong()` |
 
-| Exception Type | HTTP Status Code | Error Code |
-|---------------|------------------|------------|
-| `ArgumentException` / `ArgumentNullException` | 400 Bad Request | `BadRequest` |
-| `UnauthorizedAccessException` | 401 Unauthorized | `Unauthorized` |
-| `KeyNotFoundException` | 404 Not Found | `NotFound` |
-| `NotImplementedException` | 501 Not Implemented | `NotImplemented` |
-| Other exceptions | 500 Internal Server Error | `InternalServerError` |
+### Implementation Details
+The handler delegates the conversion to `ErrorToProblemDetailsConverter.GetProblemDetails()` which handles:
+- Converting `Error` objects to `ProblemDetails` format
+- Environment-specific behavior (development vs production)
+- Setting the `Instance` property to the request path
+
+Response format:
+- Content-Type: `"application/problem+json"`
+- JSON serialization uses camelCase naming policy
+- Returns `false` if HTTP response has already started (prevents writing to a committed response)
 
 ### Environment-Specific Behavior
-
 - **Development Mode**: Returns detailed error information including:
   - Exception message
   - Full stack trace
-  - Request path and trace identifier
+  - Request path (in Instance property) and trace identifier
   
 - **Production Mode**: Returns generic error messages to avoid exposing internal implementation details
 
 ### Registration
-
 The exception handler is registered in `Program.cs`:
 
 ```csharp
@@ -636,7 +596,6 @@ app.UseExceptionHandler();
 ```
 
 ### Relationship with Result Pattern
-
 The application uses two complementary error handling approaches:
 
 1. **Result Pattern**: For expected business logic errors

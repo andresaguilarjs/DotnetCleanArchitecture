@@ -3,7 +3,8 @@ using FastEndpoints;
 
 namespace WebApi.Abstractions;
 
-public abstract class BaseEndpoint<TRequest, TResponse, TResult> : Endpoint<TRequest, TResponse> where TRequest : notnull
+public abstract class BaseEndpoint<TRequest, TResponse, TResult>
+    : Endpoint<TRequest, TResponse> where TRequest : notnull
 {
     protected ProblemDetails HandleErrors(Result<TResult> result)
     {

@@ -408,11 +408,11 @@ The application uses a `GlobalExceptionHandler` that catches all unhandled excep
 **Exception Type Mappings:**
 ```csharp
 // The handler automatically maps exceptions to HTTP status codes:
-ArgumentException / ArgumentNullException → 400 Bad Request
-UnauthorizedAccessException → 401 Unauthorized
-KeyNotFoundException → 404 Not Found
-NotImplementedException → 501 Not Implemented
-Other exceptions → 500 Internal Server Error
+ArgumentException / ArgumentNullException → 400 (ValidationError)
+UnauthorizedAccessException → 401 (Unauthorized)
+KeyNotFoundException → 404 (NotFound)
+InvalidOperationException / NotSupportedException → 501 (NotImplemented)
+Other exceptions → 500 (InternalServerError)
 ```
 
 **Example: Unhandled Exception**

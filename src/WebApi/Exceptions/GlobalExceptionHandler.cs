@@ -1,22 +1,22 @@
-﻿using Domain.Common;
+using Domain.Common;
+using FastEndpoints;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+using WebApi.Common;
 
 namespace WebApi.Exceptions;
 
 /// <summary>
 /// Global exception handler for the application using IExceptionHandler interface (.NET 10).
-/// This handler is used to handle all unhandled exceptions in the application.
-/// </summary>
+/// This handler uses FastEndpoints.ProblemDetails for consistent error responses across the application.
 /// <param name="_logger">The logger to use for logging the exception.</param>
-/// <param name="_problemDetailsService">The problem details service to use for writing the problem details to the response.</param>
 /// <param name="_environment">The environment to use for determining if the application is in development mode.</param>
 internal sealed class GlobalExceptionHandler(
     ILogger<GlobalExceptionHandler> _logger,
-    IProblemDetailsService _problemDetailsService,
     IHostEnvironment _environment
-    ) : IExceptionHandler
+) : IExceptionHandler
 {
+    private JsonSerializerOptions? ResponseConfiguration { get; set; }
 
     /// <summary>
     /// Attempts to handle the exception and write a response.
@@ -27,99 +27,111 @@ internal sealed class GlobalExceptionHandler(
     /// <returns>True if the exception was handled; otherwise, false.</returns>
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
-        _logger.LogError(
-               exception,
-               "An unhandled exception occurred. Request: {Method} {Path}",
-               httpContext.Request.Path,
-               httpContext.TraceIdentifier
-        );
-
-        if (httpContext.Response.HasStarted)
+        LogError(httpContext, exception);
+        if (IsResponseStarted(httpContext))
         {
-            _logger.LogWarning("Response has already started, cannot write error response.");
             return false;
         }
 
-        return await _problemDetailsService.TryWriteAsync(new ProblemDetailsContext
-        {
-            HttpContext = httpContext,
-            Exception = exception,
-            ProblemDetails = GetProblemDetails(exception, httpContext)
-        });
+        ProblemDetails problemDetails = GetProblemDetailsFromException(exception, httpContext);
+
+        httpContext.Response.StatusCode = problemDetails.Status;
+        httpContext.Response.ContentType = "application/problem+json";
+        await WriteErrorResponse(httpContext, problemDetails, cancellationToken);
+
+        return true;
     }
 
     /// <summary>
-    /// Gets the problem details for the exception.
+    /// Creates a ProblemDetails instance that represents the specified exception in the context of the given HTTP
+    /// request.
     /// </summary>
-    /// <param name="exception">The exception to get the problem details for.</param>
-    /// <param name="httpContext">The HTTP context.</param>
-    /// <returns>The problem details.</returns>
-    private ProblemDetails GetProblemDetails(Exception exception, HttpContext httpContext)
+    /// <param name="exception">The exception to convert to a ProblemDetails response. Cannot be null.</param>
+    /// <param name="httpContext">The current HTTP context associated with the request. Cannot be null.</param>
+    /// <returns>A ProblemDetails object containing details about the exception suitable for use in an HTTP response.</returns>
+    private ProblemDetails GetProblemDetailsFromException(Exception exception, HttpContext httpContext)
     {
         Error error = GetGenericError(exception);
-
-        return new ProblemDetails
-        {
-            Status = (int)error.Code,
-            Title = GetTitle((int)error.Code),
-            Type = GetTypeUri((int)error.Code),
-            Detail = _environment.IsDevelopment()
-                ? $"{exception.Message}\n\nStack trace:\n{exception.StackTrace ?? "No stack trace available"}"
-                : GenericErrors.SomethingWhenWrong().Description,
-            Instance = httpContext.Request.Path
-        };
+        return ErrorToProblemDetailsConverter.GetProblemDetails(error, exception, httpContext, _environment);
     }
 
-    /// <summary>
-    /// Gets the generic error for the exception.
-    /// </summary>
-    /// <param name="exception">The exception to get the generic error for.</param>
-    /// <returns>The generic error.</returns>
-    private static Error GetGenericError(Exception exception)
+    private Error GetGenericError(Exception exception)
     {
         return exception switch
         {
             ArgumentException or ArgumentNullException => GenericErrors.ArgumentError(),
             UnauthorizedAccessException => GenericErrors.Unauthorized(),
             KeyNotFoundException => GenericErrors.NotFound(),
-            NotImplementedException => GenericErrors.NotImplemented(),
+            InvalidOperationException => GenericErrors.NotImplemented(),
+            NotSupportedException => GenericErrors.NotImplemented(),
             _ => GenericErrors.SomethingWhenWrong()
         };
     }
 
     /// <summary>
-    /// Gets the title for the status code.
+    /// Retrieves the JSON serializer options used for response serialization.
     /// </summary>
-    /// <param name="statusCode">The status code to get the title for.</param>
-    /// <returns>The title.</returns>
-    private static string GetTitle(int statusCode)
+    /// <remarks>If no response configuration has been set, a default configuration with camel case property
+    /// naming is created and returned. Subsequent calls return the same instance.</remarks>
+    /// <returns>A <see cref="JsonSerializerOptions"/> instance that specifies the configuration for serializing responses.</returns>
+    private JsonSerializerOptions GetResponseConfiguration()
     {
-        return statusCode switch
+        if (ResponseConfiguration == null)
         {
-            StatusCodes.Status400BadRequest => "Bad Request",
-            StatusCodes.Status401Unauthorized => "Unauthorized",
-            StatusCodes.Status404NotFound => "Not Found",
-            StatusCodes.Status500InternalServerError => "Internal Server Error",
-            StatusCodes.Status501NotImplemented => "Not Implemented",
-            _ => "An Error Occurred"
-        };
+            ResponseConfiguration = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+        }
+        return ResponseConfiguration;
+    }
+    /// <summary>
+    /// Determines whether the HTTP response has already started for the specified context.
+    /// If the response has started, a warning is logged.
+    /// </summary>
+    /// <param name="httpContext">The HTTP context to check for a started response. Cannot be null.</param>
+    /// <returns>true if the response has already started; otherwise, false.</returns>
+    private bool IsResponseStarted(HttpContext httpContext)
+    {
+        if (httpContext.Response.HasStarted)
+        {
+            _logger.LogWarning("Response has already started, cannot write error response: {TraceIdentifier}", httpContext.TraceIdentifier);
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
-    /// Gets the type URI for the status code.
+    /// Logs an unhandled exception that occurred during the processing of an HTTP request.
     /// </summary>
-    /// <param name="statusCode">The status code to get the type URI for.</param>
-    /// <returns>The type URI.</returns>
-    private static string GetTypeUri(int statusCode)
+    /// <param name="httpContext">The HTTP context associated with the current request. Cannot be null.</param>
+    /// <param name="exception">The exception to log. Cannot be null.</param>
+    private void LogError(HttpContext httpContext, Exception exception)
     {
-        return statusCode switch
-        {
-            StatusCodes.Status400BadRequest => "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-            StatusCodes.Status401Unauthorized => "https://tools.ietf.org/html/rfc7235#section-3.1",
-            StatusCodes.Status404NotFound => "https://tools.ietf.org/html/rfc7231#section-6.5.4",
-            StatusCodes.Status500InternalServerError => "https://tools.ietf.org/html/rfc7231#section-6.6.1",
-            StatusCodes.Status501NotImplemented => "https://tools.ietf.org/html/rfc7231#section-6.6.2",
-            _ => "https://tools.ietf.org/html/rfc7231#section-6.6.1"
-        };
+        _logger.LogError(
+            exception,
+            "An unhandled exception occurred. Request: {Method} {Path}, {TraceIdentifier}",
+            httpContext.Request.Method,
+            httpContext.Request.Path,
+            httpContext.TraceIdentifier
+        );
+    }
+
+    /// <summary>
+    /// Asynchronously writes a JSON error response to the HTTP response body using the specified problem details.
+    /// </summary>
+    /// <param name="httpContext">The HTTP context for the current request. The response body is written to this context's response stream.</param>
+    /// <param name="problemDetails">The problem details object containing information about the error to be serialized in the response.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the asynchronous operation.</param>
+    /// <returns>A task that represents the asynchronous write operation.</returns>
+    private async ValueTask WriteErrorResponse(HttpContext httpContext, ProblemDetails problemDetails, CancellationToken cancellationToken)
+    {
+        await JsonSerializer.SerializeAsync(
+            httpContext.Response.Body,
+            problemDetails,
+            GetResponseConfiguration(),
+            cancellationToken
+        );
     }
 }
