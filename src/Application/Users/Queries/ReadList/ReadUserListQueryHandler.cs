@@ -5,15 +5,9 @@ using Domain.Entities.User.Interfaces;
 
 namespace Application.Users.Queries.ReadList;
 
-public sealed class ReadUserListQueryHandler : IQueryHandler<ReadUserListQuery, IList<UserDTO>>
+public sealed class ReadUserListQueryHandler(IUserQueryRepository _userQueryRepository) 
+    : IQueryHandler<ReadUserListQuery, IList<UserDTO>>
 {
-    private readonly IUserQueryRepository _userQueryRepository;
-
-    public ReadUserListQueryHandler(IUserQueryRepository userRepository)
-    {
-        _userQueryRepository = userRepository;
-    }
-
     public async Task<Result<IList<UserDTO>>> Handle(ReadUserListQuery request, CancellationToken cancellationToken)
     {
         Result<IReadOnlyList<UserEntity>> users = await _userQueryRepository.ListAllAsync();

@@ -1,12 +1,7 @@
 using Application.Abstractions.Messaging;
 using Application.Abstractions.PipelineBehaviors;
 using Application.Behaviors;
-using Application.Users;
-using Application.Users.Commands.CreateUser;
-using Application.Users.Commands.DeleteUser;
-using Application.Users.Commands.UpdateUser;
-using Application.Users.Queries.ReadList;
-using Application.Users.Queries.ReadUser;
+using Application.Common;
 using Application.Users.Services;
 using Domain.Entities.User.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +17,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         // Mediator
-        services.AddScoped<IMediator, Application.Mediator.Mediator>();
+        services.AddScoped<IMediator, Mediator>();
 
         // Behaviors
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>));
@@ -30,14 +25,18 @@ public static class DependencyInjection
         // Services
         services.AddScoped<IUserService, UserService>();
 
-        // Commands
-        services.AddScoped<ICommandHandler<DeleteUserCommand>, DeleteUserCommandHandler>();
-        services.AddScoped<ICommandHandler<CreateUserCommand, UserDTO>, CreateUserCommandHandler>();
-        services.AddScoped<ICommandHandler<UpdateUserCommand, UserDTO>, UpdateUserCommandHandler>();
-
-        // Queries
-        services.AddScoped<IQueryHandler<ReadUserListQuery, IList<UserDTO>>, ReadUserListQueryHandler>();
-        services.AddScoped<IQueryHandler<ReadUserQuery, UserDTO>, ReadUserQueryHandler>();
+        // Commands and Queries Handlers
+        services.Scan(scan => scan.FromAssembliesOf(typeof(DependencyInjection))
+            .AddClasses(classes => classes.AssignableTo(typeof(ICommandHandler<>)), publicOnly: false)
+                .AsImplementedInterfaces()
+                .WithScopedLifetime()
+            .AddClasses(classes => classes.AssignableTo(typeof(ICommandHandler<,>)), publicOnly: false)
+                .AsImplementedInterfaces()
+                .WithScopedLifetime()
+            .AddClasses(classes => classes.AssignableTo(typeof(IQueryHandler<,>)), publicOnly: false)
+                .AsImplementedInterfaces()
+                .WithScopedLifetime()
+        );
         
         return services;
     }

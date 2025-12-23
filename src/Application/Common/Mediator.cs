@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Concurrent;
 using System.Reflection;
 
-namespace Application.Mediator;
+namespace Application.Common;
 
 /// <summary>
 /// Custom mediator implementation that dispatches requests to handlers through a pipeline of behaviors.

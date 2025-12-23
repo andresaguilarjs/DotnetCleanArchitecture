@@ -131,20 +131,42 @@ public interface IQueryHandler<TQuery, TResponse>
 ```
 
 #### Registration
-The mediator and handlers are registered in dependency injection:
+The mediator is registered as a Scoped service. The handlers are registered in dependency injection using **Scrutor** for automatic discovery:
 
 ```csharp
+// Application/DependencyInjection.cs
+
+public static IServiceCollection AddApplication(this IServiceCollection services)
+{
 // Register mediator
 services.AddScoped<IMediator, Application.Mediator.Mediator>();
 
-// Register command handlers
-services.AddScoped<ICommandHandler<CreateUserCommand, UserDTO>, CreateUserCommandHandler>();
-services.AddScoped<ICommandHandler<DeleteUserCommand>, DeleteUserCommandHandler>();
+    // Automatically register all command handlers, query handlers, and pipeline behaviors
+    // using Scrutor assembly scanning
+    services.Scan(scan => scan.FromAssembliesOf(typeof(DependencyInjection))
+        .AddClasses(classes => classes.AssignableTo(typeof(ICommandHandler<>)), publicOnly: false)
+            .AsImplementedInterfaces()
+            .WithScopedLifetime()
+        .AddClasses(classes => classes.AssignableTo(typeof(ICommandHandler<,>)), publicOnly: false)
+            .AsImplementedInterfaces()
+            .WithScopedLifetime()
+        .AddClasses(classes => classes.AssignableTo(typeof(IQueryHandler<,>)), publicOnly: false)
+            .AsImplementedInterfaces()
+            .WithScopedLifetime()
+        .AddClasses(classes => classes.AssignableTo(typeof(IPipelineBehavior<,>)), publicOnly: false)
+            .AsImplementedInterfaces()
+            .WithScopedLifetime()
+    );
 
-// Register query handlers
-services.AddScoped<IQueryHandler<ReadUserQuery, UserDTO>, ReadUserQueryHandler>();
-services.AddScoped<IQueryHandler<ReadUserListQuery, IList<UserDTO>>, ReadUserListQueryHandler>();
+    return services;
+}
 ```
+
+**Key Points:**
+- **Automatic Discovery**: All handlers and pipeline behaviors are automatically discovered and registered
+- **No Manual Registration**: You don't need to manually register each handler
+- **Supports Internal Classes**: `publicOnly: false` allows registration of `internal` handler classes
+- **Scoped Lifetime**: All handlers are registered with scoped lifetime
 
 ### Usage in Endpoints
 

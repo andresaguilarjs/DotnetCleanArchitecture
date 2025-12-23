@@ -93,13 +93,6 @@ public sealed class CreateUserCommandHandler : ICommandHandler<CreateUserCommand
 }
 ```
 
-### Step 3: Register the Handler
-
-```csharp
-// Application/DependencyInjection.cs
-services.AddScoped<ICommandHandler<CreateUserCommand, UserDTO>, CreateUserCommandHandler>();
-```
-
 ## Creating a Query
 
 Queries represent read operations that retrieve data without changing state.
@@ -157,13 +150,6 @@ internal sealed class ReadUserQueryHandler : IQueryHandler<ReadUserQuery, UserDT
         return Result<UserDTO>.Success(UserMapper.Map(user));
     }
 }
-```
-
-### Step 3: Register the Handler
-
-```csharp
-// Application/DependencyInjection.cs
-services.AddScoped<IQueryHandler<ReadUserQuery, UserDTO>, ReadUserQueryHandler>();
 ```
 
 ## Using the Mediator
