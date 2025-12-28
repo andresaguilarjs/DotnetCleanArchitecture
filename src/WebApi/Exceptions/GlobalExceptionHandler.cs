@@ -125,7 +125,7 @@ internal sealed class GlobalExceptionHandler(
     /// <param name="problemDetails">The problem details object containing information about the error to be serialized in the response.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the asynchronous operation.</param>
     /// <returns>A task that represents the asynchronous write operation.</returns>
-    private async ValueTask WriteErrorResponse(HttpContext httpContext, ProblemDetails problemDetails, CancellationToken cancellationToken)
+    private async Task WriteErrorResponse(HttpContext httpContext, ProblemDetails problemDetails, CancellationToken cancellationToken)
     {
         await JsonSerializer.SerializeAsync(
             httpContext.Response.Body,

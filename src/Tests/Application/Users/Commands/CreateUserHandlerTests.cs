@@ -7,6 +7,7 @@ using Domain.Entities.User.Interfaces;
 using FluentAssertions;
 using Infrastructure.Database.Repositories.Command;
 using Infrastructure.Database.Repositories.Query;
+using Moq;
 
 namespace Tests.Application.Users.Commands;
 

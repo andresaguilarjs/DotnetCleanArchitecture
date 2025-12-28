@@ -67,7 +67,7 @@ public sealed class UserEntity : BaseEntity
     public override void Delete()
     {
         base.IsDeleted = true;
-        this.Email = Email.Create($"{this.Id }-{this.Email.Value}-deleted");
+        this.Email = Email.CreateForDeleted(this.Id);
         RefreshUpdateAt();
     }
 }

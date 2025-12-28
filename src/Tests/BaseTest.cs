@@ -1,3 +1,4 @@
+using Domain.Common;
 using Domain.Interfaces;
 using Infrastructure.Database.DBContext;
 using Moq;
@@ -21,6 +22,9 @@ public abstract class BaseTest : IAsyncLifetime, IDisposable
     {
         _dbContext = InMemoryDatabase.GetDbContext();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _unitOfWorkMock
+           .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+           .ReturnsAsync(Result.Success());
     }
 
     /// <summary>

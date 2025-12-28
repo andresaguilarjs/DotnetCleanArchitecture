@@ -6,18 +6,14 @@ using Domain.Interfaces;
 
 namespace Application.Users.Commands.CreateUser;
 
-public sealed class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, UserDTO>
+public sealed class CreateUserCommandHandler(
+    IUnitOfWork unitOfWork,
+    IUserCommandRepository userCommandRepository,
+    IUserService userService) : ICommandHandler<CreateUserCommand, UserDTO>
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IUserCommandRepository _userCommandRepository;
-    private readonly IUserService _userService;
-
-    public CreateUserCommandHandler(IUnitOfWork unitOfWork, IUserCommandRepository userRepository, IUserService userService)
-    {
-        _unitOfWork = unitOfWork;
-        _userCommandRepository = userRepository;
-        _userService = userService;
-    }
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IUserCommandRepository _userCommandRepository = userCommandRepository;
+    private readonly IUserService _userService = userService;
 
     public async Task<Result<UserDTO>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {

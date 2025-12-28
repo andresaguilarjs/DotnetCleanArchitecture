@@ -17,18 +17,18 @@ public class UserConfiguration : IEntityTypeConfiguration<UserEntity>
         builder.Property(x => x.Email)
             .IsRequired()
             .HasMaxLength(100)
-            .HasConversion(email => email.Value, email => Email.Create(email));
+            .HasConversion(email => email.Value, email => Email.CreateFromDatabase(email));
         builder.HasIndex(x => x.Email).IsUnique();
 
         builder.Property(x => x.FirstName)
             .IsRequired()
             .HasMaxLength(100)
-            .HasConversion(firstName => firstName.Value, firstName => FirstName.Create(firstName));
+            .HasConversion(firstName => firstName.Value, firstName => FirstName.CreateFromDatabase(firstName));
 
         builder.Property(x => x.LastName)
             .IsRequired()
             .HasMaxLength(100)
-            .HasConversion(lastName => lastName.Value, lastName => LastName.Create(lastName));
+            .HasConversion(lastName => lastName.Value, lastName => LastName.CreateFromDatabase(lastName));
 
         builder.Property(x => x.CreatedAt).IsRequired();
 
