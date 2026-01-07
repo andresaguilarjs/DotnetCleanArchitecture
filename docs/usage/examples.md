@@ -14,6 +14,7 @@ This document provides practical code examples demonstrating how to use the Clea
 8. [Domain Service Example](#domain-service-example)
 9. [Mediator Usage Examples](#mediator-usage-examples)
 10. [Pipeline Behaviors](#pipeline-behaviors)
+11. [Creating a Validator](#creating-a-validator)
 
 ## Creating a Command
 
@@ -869,6 +870,16 @@ When you send a request through the mediator:
 4. The request flows through all behaviors before reaching the handler
 5. The response flows back through all behaviors
 
+### Example: Validation Behavior
+
+The `ValidationPipelineBehavior` automatically validates all requests using registered validators before they reach handlers.
+
+**Key Points:**
+- Validators are automatically discovered and executed
+- Multiple validators can be registered for the same request type
+- If any validator fails, the handler is never called
+- All validation errors are collected and returned together
+
 ### Example: Logging Behavior
 
 The `LoggingPipelineBehavior` automatically logs all requests and responses:
@@ -903,20 +914,188 @@ public class LoggingPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TR
 Pipeline behaviors are registered in `Application/DependencyInjection.cs`:
 
 ```csharp
+// Behaviors - Order matters! Validation should run before logging
+services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
 services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>));
+
+// Validators are automatically discovered and registered
+services.Scan(scan => scan.FromAssembliesOf(typeof(DependencyInjection))
+    .AddClasses(classes => classes.AssignableTo(typeof(IValidator<>)), publicOnly: false)
+        .AsImplementedInterfaces()
+        .WithScopedLifetime()
+);
 ```
 
-The order of registration matters - behaviors are applied in reverse order of registration.
+**Pipeline Execution Order:**
+1. **ValidationPipelineBehavior** - Runs first, validates input
+2. **LoggingPipelineBehavior** - Logs the request (only if validation passes)
+3. **Handler** - Processes the request (only if validation passes)
+
+The order of registration matters - behaviors are applied in reverse order of registration, so ValidationPipelineBehavior must be registered first.
+
+## Creating a Validator
+
+Validators provide early validation feedback for commands and queries before they reach their handlers. They validate input format, basic constraints, and can check business rules (like uniqueness). Validators are automatically executed by the `ValidationPipelineBehavior` in the request pipeline.
+
+**Key Points:**
+- Validators run **before** handlers execute
+- They complement domain validations (value objects still validate at the domain layer)
+- Multiple validators can be registered for the same request type
+- If validation fails, the handler is never called
+
+### Step 1: Implement the IValidator Interface
+
+```csharp
+// Application/Users/Commands/CreateUser/CreateUserCommandValidator.cs
+using Application.Abstractions.Validation;
+using Domain.Common;
+using Domain.Entities.User;
+using Domain.Entities.User.Interfaces;
+using Domain.Entities.User.ValueObjects;
+
+namespace Application.Users.Commands.CreateUser;
+
+/// <summary>
+/// Validates CreateUserCommand input before it reaches the handler.
+/// This provides early validation feedback for input format and basic constraints.
+/// 
+/// Note: This is complementary to domain object validations. Domain validations
+/// (Email.Create, FirstName.Create, etc.) enforce business rules and invariants.
+/// This validator focuses on input validation at the application boundary.
+/// </summary>
+public class CreateUserCommandValidator : IValidator<CreateUserCommand>
+{
+    private readonly IUserQueryRepository _userQueryRepository;
+
+    public CreateUserCommandValidator(IUserQueryRepository userQueryRepository)
+    {
+        _userQueryRepository = userQueryRepository;
+    }
+
+    public async Task<Result> ValidateAsync(
+        CreateUserCommand request, 
+        CancellationToken cancellationToken = default)
+    {
+        List<Error> errors = new();
+
+        // Validate email format and availability
+        List<Error> emailErrors = await ValidateEmailAsync(request.UserRequest.Email);
+        errors.AddRange(emailErrors);
+
+        // Validate first name
+        if (string.IsNullOrWhiteSpace(request.UserRequest.FirstName))
+        {
+            errors.Add(UserErrors.EmptyName("FirstName"));
+        }
+        else if (request.UserRequest.FirstName.Length < 2 || 
+                 request.UserRequest.FirstName.Length > 50)
+        {
+            errors.Add(UserErrors.InvalidNameLength("FirstName"));
+        }
+
+        // Validate last name
+        if (string.IsNullOrWhiteSpace(request.UserRequest.LastName))
+        {
+            errors.Add(UserErrors.EmptyName("LastName"));
+        }
+        else if (request.UserRequest.LastName.Length < 2 || 
+                 request.UserRequest.LastName.Length > 50)
+        {
+            errors.Add(UserErrors.InvalidNameLength("LastName"));
+        }
+
+        return errors.Any() 
+            ? Result.Failure(errors) 
+            : Result.Success();
+    }
+
+    private async Task<List<Error>> ValidateEmailAsync(string email)
+    {
+        List<Error> errors = new();
+
+        // Check if email is empty
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            errors.Add(UserErrors.EmptyEmail());
+            return errors; // Early return if empty
+        }
+
+        // Check email format using domain value object
+        if (!Email.IsValid(email))
+        {
+            errors.Add(UserErrors.InvalidEmail());
+            return errors; // Early return if invalid format
+        }
+
+        // Create email value object for further validation
+        Result<Email> emailResult = Email.Create(email);
+        if (emailResult.IsFailure)
+        {
+            errors.AddRange(emailResult.Errors);
+            return errors;
+        }
+
+        // Check if email is already in use (business rule validation)
+        Result<UserEntity> existingUser = await _userQueryRepository
+            .GetByEmailAsync(emailResult.Value);
+        
+        if (existingUser.IsSuccess)
+        {
+            errors.Add(UserErrors.EmailAlreadyInUse(email));
+        }
+
+        return errors;
+    }
+}
+```
+
+### Automatic Registration
+
+Validators are automatically discovered and registered by Scrutor in `Application/DependencyInjection.cs`.
+
+**Benefits of Automatic Registration:**
+- No manual registration required for each validator
+- Validators are automatically discovered from the assembly
+- Multiple validators for the same request type are all executed
+
+### What Happens When Validation Fails?
+
+When a validator returns `Result.Failure`:
+
+1. **ValidationPipelineBehavior** collects all errors from all validators
+2. **Handler is never called** - execution stops in the pipeline
+3. **Error response is returned** - `Result<TResponse>.Failure(errors)` is returned
+4. **Endpoint receives failure** - endpoint's `HandleErrors(result)` method converts errors to HTTP ProblemDetails
+
+**Example Flow:**
+```
+Request → ValidationPipelineBehavior → Validator fails → 
+Return Result.Failure(errors) → Endpoint → HandleErrors → 
+HTTP 400 Bad Request with ProblemDetails
+```
+
+### Relationship Between Validators and Domain Validations
+
+| Aspect | Validators | Domain Validations (Value Objects) |
+|--------|-----------|-----------------------------------|
+| **When** | Before handler executes | During handler execution |
+| **Purpose** | Input validation, format checks, basic constraints | Business rules, invariants, domain logic |
+| **Performance** | Can prevent expensive operations | Always runs as part of business logic |
+| **External Data** | Can check uniqueness, availability | Typically pure logic |
+| **Errors** | Early feedback to API consumers | Part of business rule enforcement |
+
+**Both are important and complement each other!**
 
 ## Best Practices Demonstrated
 
 1. **Separation of Concerns**: Each layer has clear responsibilities
 2. **Error Handling**: Use Result pattern, not exceptions for business logic
-3. **Validation**: Validate at domain level using value objects
+3. **Validation**: Validate at multiple levels - validators for input validation, domain value objects for business rules
 4. **Immutability**: Value objects and entities use private setters
 5. **Factory Methods**: Entities created via static factory methods
 6. **DTOs**: Domain entities never exposed to API layer
 7. **Dependency Injection**: All dependencies injected via constructor
 8. **Mediator Pattern**: Use mediator to decouple endpoints from handlers
-9. **Pipeline Behaviors**: Use behaviors for cross-cutting concerns
+9. **Pipeline Behaviors**: Use behaviors for cross-cutting concerns (validation, logging)
+10. **Early Validation**: Use validators to provide fast feedback and prevent invalid data from reaching handlers
 

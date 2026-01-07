@@ -1,9 +1,11 @@
+using Domain.Interfaces;
+
 namespace Domain.Common;
 
 /// <summary>
 /// Represents the result of an operation that can either succeed or fail.
 /// </summary>
-public sealed class Result
+public sealed class Result : IResult<Result>
 {
     /// <summary>
     /// Gets a value indicating whether the operation was successful.
@@ -51,7 +53,7 @@ public sealed class Result
 /// Represents the result of an operation that can either succeed or fail, with a value.
 /// </summary>
 /// <typeparam name="TResult">The type of the value associated with the result.</typeparam>
-public sealed class Result<TResult>
+public sealed class Result<TResult> : IResult<Result<TResult>>
 {
     /// <summary>
     /// Gets a value indicating whether the operation was successful.

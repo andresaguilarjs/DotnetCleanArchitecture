@@ -11,10 +11,11 @@ The project implements several design patterns to achieve separation of concerns
 3. **Repository Pattern**
 4. **Result Pattern**
 5. **Pipeline Behavior Pattern**
-6. **Unit of Work Pattern**
-7. **Global Exception Handling Pattern**
-8. **Value Object Pattern**
-9. **Factory Pattern**
+6. **Validation Pattern (Two-Layer Approach)**
+7. **Unit of Work Pattern**
+8. **Global Exception Handling Pattern**
+9. **Value Object Pattern**
+10. **Factory Pattern**
 
 ## 1. CQRS (Command Query Responsibility Segregation)
 
@@ -482,7 +483,167 @@ services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<
 - Interface: `Application/Abstractions/PipelineBehaviors/IPipelineBehavior.cs`
 - Implementation: `Application/Behaviors/LoggingPipelineBehavior.cs`
 
-## 6. Unit of Work Pattern
+## 6. Validation Pattern (Two-Layer Approach)
+
+### Purpose
+Implements a two-layer validation strategy that provides early feedback at the application boundary while maintaining domain integrity through value object validations. This approach ensures invalid data is caught early and domain invariants are always enforced.
+
+### Two-Layer Validation Strategy
+
+The project uses **two complementary validation layers**:
+
+1. **Pipeline Behavior Validation (Application Layer)**
+   - Validates input/DTOs before they reach handlers
+   - Provides early feedback and fail-fast behavior
+   - Focuses on input format and basic constraints
+   - Runs in the pipeline before business logic
+
+2. **Domain Object Validation (Domain Layer)**
+   - Validates when creating value objects (Email, FirstName, LastName, etc.)
+   - Enforces business rules and domain invariants
+   - Provides defense in depth
+   - Ensures domain integrity regardless of entry point
+
+### Why Both Layers?
+
+**Pipeline Behavior Validation:**
+- ✅ Catches invalid input early (before handler execution)
+- ✅ Provides immediate feedback to API consumers
+- ✅ Reduces unnecessary processing of invalid data
+- ✅ Validates DTO/request structure
+
+**Domain Object Validation:**
+- ✅ Enforces domain invariants (business rules)
+- ✅ Works even if value objects are created from other sources (database, migrations, etc.)
+- ✅ Provides defense in depth (catches what pipeline might miss)
+- ✅ Ensures domain integrity is always maintained
+
+### Implementation
+
+#### Layer 1: Pipeline Behavior Validation
+
+```csharp
+// Application/Abstractions/Validation/IValidator.cs
+public interface IValidator<in TRequest>
+{
+    Task<Result> ValidateAsync(TRequest request, CancellationToken cancellationToken = default);
+}
+
+// Application/Behaviors/ValidationPipelineBehavior.cs
+
+
+// Application/Users/Commands/CreateUser/CreateUserCommandValidator.cs
+public class CreateUserCommandValidator : IValidator<CreateUserCommand>
+{
+    public Task<Result> ValidateAsync(CreateUserCommand request, CancellationToken cancellationToken = default)
+    {
+        // ... validations
+
+        return errors.Any() 
+            ? Task.FromResult(Result.Failure(errors)) 
+            : Task.FromResult(Result.Success());
+    }
+}
+```
+
+#### Layer 2: Domain Object Validation
+
+```csharp
+// Domain/Entities/User/ValueObjects/Email.cs
+public record Email
+{
+    public static Result<Email> Create(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return Result<Email>.Failure(new List<Error> { UserErrors.EmptyEmail() });
+        }
+
+        if (!IsValid(email))
+        {
+            return Result<Email>.Failure(new List<Error> { UserErrors.InvalidEmail() });
+        }
+
+        return Result<Email>.Success(new Email(email));
+    }
+}
+```
+
+### Registration
+
+Validators and the validation behavior are registered in `Application/DependencyInjection.cs`:
+
+```csharp
+// Register validation behavior (order matters - runs before other behaviors)
+services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
+
+// Auto-register all validators
+services.Scan(scan => scan.FromAssembliesOf(typeof(DependencyInjection))
+    .AddClasses(classes => classes.AssignableTo(typeof(IValidator<>)), publicOnly: false)
+        .AsImplementedInterfaces()
+        .WithScopedLifetime()
+);
+```
+
+### Validation Flow
+
+```
+1. Request arrives at API endpoint
+   ↓
+2. Pipeline Behavior Validation (early validation)
+   - Validates DTO/request structure
+   - Returns errors immediately if invalid
+   ↓
+3. Handler executes
+   ↓
+4. Domain Service creates value objects
+   ↓
+5. Domain Object Validation (domain invariants)
+   - Email.Create(), FirstName.Create(), etc.
+   - Enforces business rules
+   ↓
+6. Business logic continues
+```
+
+### Benefits
+
+- **Early Feedback**: Invalid input is caught before handler execution
+- **Domain Integrity**: Domain validations ensure invariants are always enforced
+- **Defense in Depth**: Two layers catch different types of issues
+- **Separation of Concerns**: Input validation vs. business rule validation
+- **No Exceptions**: Both layers use Result pattern, no exceptions thrown
+- **Testability**: Each layer can be tested independently
+- **Flexibility**: Domain objects can be created from any source safely
+
+### When to Use Each Layer
+
+**Pipeline Behavior Validation:**
+- Input format validation (required fields, basic format)
+- DTO structure validation
+- Early rejection of obviously invalid data
+- API contract validation
+
+**Domain Object Validation:**
+- Business rule enforcement (email format, name length, etc.)
+- Domain invariants
+- Complex validation logic
+- Rules that must always be enforced
+
+### Best Practices
+
+1. **Keep Pipeline Validations Light**: Focus on format and structure
+2. **Keep Domain Validations Comprehensive**: Enforce all business rules
+3. **Don't Duplicate Logic Unnecessarily**: Pipeline can do basic checks, domain does detailed validation
+4. **Use Consistent Error Messages**: Both layers can use the same error factory methods
+5. **Test Both Layers**: Ensure both validation layers work correctly
+
+### Location
+- Validator Interface: `Application/Abstractions/Validation/IValidator.cs`
+- Validation Behavior: `Application/Behaviors/ValidationPipelineBehavior.cs`
+- Validators: `Application/{Feature}/Commands/{Command}/{Command}Validator.cs`
+- Domain Validations: `Domain/Entities/{Entity}/ValueObjects/`
+
+## 7. Unit of Work Pattern
 
 ### Purpose
 Maintains a list of objects affected by a business transaction and coordinates writing out changes and resolving concurrency problems. The implementation includes comprehensive error handling for database exceptions, ensuring that all database errors are properly caught, logged, and converted to domain errors using the Result pattern.
@@ -564,7 +725,7 @@ public async Task<Result<UserDTO>> Handle(CreateUserCommand request, Cancellatio
 - Interface: `Domain/Interfaces/IUnitOfWork.cs`
 - Implementation: `Infrastructure/Database/Common/UnitOfWork.cs`
 
-## 7. Global Exception Handling Pattern
+## 8. Global Exception Handling Pattern
 
 ### Purpose
 Provides centralized exception handling for all unhandled exceptions in the application, ensuring consistent error responses and proper logging. This complements the Result pattern by handling unexpected exceptions that escape the normal application flow.
@@ -654,7 +815,7 @@ however this handler catches unexpected exceptions and some common framework exc
 - Implementation: `WebApi/Exceptions/GlobalExceptionHandler.cs`
 - Registration: `WebApi/Program.cs`
 
-## 8. Value Object Pattern
+## 9. Value Object Pattern
 
 ### Purpose
 Represents a descriptive aspect of the domain with no conceptual identity. Value objects are immutable and defined by their attributes.
@@ -726,7 +887,7 @@ public sealed class UserEntity : BaseEntity
 - `Domain/Abstractions/ValueObjects/`
 - `Domain/Entities/{Entity}/ValueObjects/`
 
-## 9. Factory Pattern
+## 10. Factory Pattern
 
 ### Purpose
 Provides a way to create objects without specifying the exact class of object that will be created.

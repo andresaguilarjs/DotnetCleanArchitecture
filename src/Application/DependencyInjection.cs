@@ -1,5 +1,6 @@
 using Application.Abstractions.Messaging;
 using Application.Abstractions.PipelineBehaviors;
+using Application.Abstractions.Validation;
 using Application.Behaviors;
 using Application.Common;
 using Application.Users.Services;
@@ -19,8 +20,16 @@ public static class DependencyInjection
         // Mediator
         services.AddScoped<IMediator, Mediator>();
 
-        // Behaviors
+        // Behaviors - Order matters! Validation should run before logging
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>));
+
+        // Validators
+        services.Scan(scan => scan.FromAssembliesOf(typeof(DependencyInjection))
+            .AddClasses(classes => classes.AssignableTo(typeof(IValidator<>)), publicOnly: false)
+                .AsImplementedInterfaces()
+                .WithScopedLifetime()
+        );
 
         // Services
         services.AddScoped<IUserService, UserService>();
