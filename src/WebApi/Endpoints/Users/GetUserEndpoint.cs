@@ -28,7 +28,7 @@ public class GetUserEndpoint : BaseEndpoint<EmptyRequest, Results<Ok<UserDTO>, P
         string? id = Route<string>("id");
         if (id is null || string.IsNullOrEmpty(id) || !Guid.TryParse(id, out Guid userId))
         {
-            return GetNotFoundResponse();
+            return GetNotFoundResponse(GenericErrors.NotFound(id ?? string.Empty, "User"));
         }
 
         ReadUserQuery readUserQuery = new(userId);

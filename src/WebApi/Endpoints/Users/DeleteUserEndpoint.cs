@@ -29,7 +29,7 @@ public class DeleteUserEndpoint : BaseEndpoint<EmptyRequest, Results<NoContent, 
 
         if (id is null || string.IsNullOrEmpty(id) || !Guid.TryParse(id, out Guid userId))
         {
-            return GetNotFoundResponse();
+            return GetNotFoundResponse(GenericErrors.NotFound(id ?? string.Empty, "User"));
         }
 
         DeleteUserCommand deleteUserCommand = new(userId);

@@ -22,6 +22,17 @@ public sealed class GenericErrors
     }
 
     /// <summary>
+    /// Creates an error indicating that a resource of the specified type and identifier was not found.
+    /// </summary>
+    /// <param name="resourceId">The unique identifier of the resource that could not be found.</param>
+    /// <param name="typeName">The name of the resource type that was not found. This value is used in the error message.</param>
+    /// <returns>An <see cref="Error"/> instance representing a 'not found' error for the specified resource.</returns>
+    public static Error NotFound(string resourceId, string typeName)
+    {
+        return new Error(ErrorCode.NotFound, $"The {typeName} with ID '{resourceId}' was not found.");
+    }
+
+    /// <summary>
     /// Represents a generic not found error without specific resource information.
     /// </summary>
     /// <returns></returns>

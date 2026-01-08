@@ -37,20 +37,20 @@ public class CreateUserCommandValidator(
 
         if (string.IsNullOrWhiteSpace(request.UserRequest.FirstName))
         {
-            errors.Add(UserErrors.EmptyName("FirstName"));
+            errors.Add(UserErrors.EmptyName("first name"));
         }
         else if (request.UserRequest.FirstName.Length < 2 || request.UserRequest.FirstName.Length > 50)
         {
-            errors.Add(UserErrors.InvalidNameLength("FirstName"));
+            errors.Add(UserErrors.InvalidNameLength("first name"));
         }
 
         if (string.IsNullOrWhiteSpace(request.UserRequest.LastName))
         {
-            errors.Add(UserErrors.EmptyName("LastName"));
+            errors.Add(UserErrors.EmptyName("last name"));
         }
         else if (request.UserRequest.LastName.Length < 2 || request.UserRequest.LastName.Length > 50)
         {
-            errors.Add(UserErrors.InvalidNameLength("LastName"));
+            errors.Add(UserErrors.InvalidNameLength("last name"));
         }
 
         return errors.Any() 
