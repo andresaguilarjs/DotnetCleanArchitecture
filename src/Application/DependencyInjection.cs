@@ -3,8 +3,10 @@ using Application.Abstractions.PipelineBehaviors;
 using Application.Abstractions.Validation;
 using Application.Behaviors;
 using Application.Common;
+using Application.Users.Events;
 using Application.Users.Services;
 using Domain.Entities.User.Interfaces;
+using Domain.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Application;
@@ -46,7 +48,11 @@ public static class DependencyInjection
                 .AsImplementedInterfaces()
                 .WithScopedLifetime()
         );
-        
+
+        // Events
+        services.AddScoped<IDomainEventHandler<UserRegisteredDomainEvent>, SendWelcomeEmailHandler>();
+        services.AddScoped<IDomainEventsDispatcher, DomainEventsDispatcher>();
+
         return services;
     }
 }

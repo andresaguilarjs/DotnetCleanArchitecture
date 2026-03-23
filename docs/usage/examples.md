@@ -15,6 +15,7 @@ This document provides practical code examples demonstrating how to use the Clea
 9. [Mediator Usage Examples](#mediator-usage-examples)
 10. [Pipeline Behaviors](#pipeline-behaviors)
 11. [Creating a Validator](#creating-a-validator)
+12. [Domain Events](#domain-events)
 
 ## Creating a Command
 
@@ -46,6 +47,7 @@ public sealed class CreateUserCommand : ICommand<UserDTO>
 ```csharp
 // Application/Users/Commands/CreateUser/CreateUserCommandHandler.cs
 using Application.Abstractions.Messaging;
+using Application.Users.Events;
 using Domain.Common;
 using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
@@ -53,28 +55,22 @@ using Domain.Interfaces;
 
 namespace Application.Users.Commands.CreateUser;
 
-public sealed class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, UserDTO>
+public sealed class CreateUserCommandHandler(
+    IUnitOfWork unitOfWork,
+    IUserCommandRepository userCommandRepository,
+    IUserService userService,
+    IDomainEventsDispatcher domainEventsDispatcher
+    ) : ICommandHandler<CreateUserCommand, UserDTO>
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IUserCommandRepository _userCommandRepository;
-    private readonly IUserService _userService;
-
-    public CreateUserCommandHandler(
-        IUnitOfWork unitOfWork, 
-        IUserCommandRepository userRepository, 
-        IUserService userService)
-    {
-        _unitOfWork = unitOfWork;
-        _userCommandRepository = userRepository;
-        _userService = userService;
-    }
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IUserCommandRepository _userCommandRepository = userCommandRepository;
+    private readonly IUserService _userService = userService;
 
     public async Task<Result<UserDTO>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {
-        // Use domain service to create entity (includes validation)
-        Result<UserEntity> user = _userService.CreateUserEntity(
-            request.UserRequest.Email, 
-            request.UserRequest.FirstName, 
+        Result<UserEntity> user = await _userService.CreateUserEntityAsync(
+            request.UserRequest.Email,
+            request.UserRequest.FirstName,
             request.UserRequest.LastName);
 
         if (user.IsFailure)
@@ -82,13 +78,20 @@ public sealed class CreateUserCommandHandler : ICommandHandler<CreateUserCommand
             return Result<UserDTO>.Failure(user.Errors);
         }
 
-        // Add to repository
         await _userCommandRepository.AddAsync(user);
-        
-        // Save changes
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        Result result = await _unitOfWork.SaveChangesAsync(cancellationToken);
+        if (result.IsFailure)
+        {
+            return Result<UserDTO>.Failure(result.Errors);
+        }
 
-        // Map to DTO and return
+        UserRegisteredDomainEvent userRegisteredEvent = new()
+        {
+            UserId = user.Value.Id
+        };
+
+        await domainEventsDispatcher.DispatchAsync([userRegisteredEvent], cancellationToken);
+
         return Result<UserDTO>.Success(UserMapper.Map(user));
     }
 }
@@ -510,7 +513,7 @@ Domain services contain business logic that doesn't belong to a single entity.
 ### Step 1: Define the Domain Service Interface
 
 ```csharp
-// Domain/Entities/User/Interfaces/IUserService.cs
+// Domain/Entities/User/Interfaces/IUserService.cs (excerpt)
 using Domain.Common;
 using Domain.Entities.User;
 
@@ -518,14 +521,17 @@ namespace Domain.Entities.User.Interfaces;
 
 public interface IUserService
 {
-    Result<UserEntity> CreateUserEntity(string email, string firstName, string lastName);
+    Task<Result<UserEntity>> CreateUserEntityAsync(string email, string firstName, string lastName);
+    // … other members — see source file
 }
 ```
 
 ### Step 2: Implement the Domain Service
 
+The real `UserService` validates value objects, checks email availability via `IUserQueryRepository`, and returns `Task<Result<UserEntity>>`. A simplified shape:
+
 ```csharp
-// Application/Users/Services/UserServices.cs
+// Application/Users/Services/UserServices.cs (conceptual excerpt)
 using Domain.Common;
 using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
@@ -535,29 +541,30 @@ namespace Application.Users.Services;
 
 public sealed class UserService : IUserService
 {
-    public Result<UserEntity> CreateUserEntity(string email, string firstName, string lastName)
+    public Task<Result<UserEntity>> CreateUserEntityAsync(string email, string firstName, string lastName)
     {
         Result<Email> emailResult = Email.Create(email);
         if (emailResult.IsFailure)
         {
-            return Result<UserEntity>.Failure(emailResult.Errors);
+            return Task.FromResult(Result<UserEntity>.Failure(emailResult.Errors));
         }
 
         Result<FirstName> firstNameResult = FirstName.Create(firstName);
         if (firstNameResult.IsFailure)
         {
-            return Result<UserEntity>.Failure(firstNameResult.Errors);
+            return Task.FromResult(Result<UserEntity>.Failure(firstNameResult.Errors));
         }
 
         Result<LastName> lastNameResult = LastName.Create(lastName);
         if (lastNameResult.IsFailure)
         {
-            return Result<UserEntity>.Failure(lastNameResult.Errors);
+            return Task.FromResult(Result<UserEntity>.Failure(lastNameResult.Errors));
         }
 
-        return Result<UserEntity>.Success(
+        // Real implementation also checks uniqueness and uses IUserQueryRepository — see UserServices.cs
+        return Task.FromResult(Result<UserEntity>.Success(
             UserEntity.Create(emailResult.Value, firstNameResult.Value, lastNameResult.Value)
-        );
+        ));
     }
 }
 ```
@@ -1086,6 +1093,60 @@ HTTP 400 Bad Request with ProblemDetails
 
 **Both are important and complement each other!**
 
+## Domain Events
+
+Domain events let a use case notify other code about something that already happened, without putting all side effects inside the command handler. Contracts (`IDomainEvent`, `IDomainEventHandler<>`, `IDomainEventsDispatcher`) live in **Domain**; event records and handlers live under **Application** (for example `Application/Users/Events/`).
+
+### Step 1: Define the event
+
+```csharp
+// Application/Users/Events/UserRegisteredDomainEvent.cs
+using Domain.Interfaces;
+
+namespace Application.Users.Events;
+
+internal sealed record UserRegisteredDomainEvent : IDomainEvent
+{
+    public Guid UserId { get; init; }
+}
+```
+
+### Step 2: Implement a handler
+
+```csharp
+// Application/Users/Events/SendWelcomeEmailHandler.cs
+using Domain.Interfaces;
+using Microsoft.Extensions.Logging;
+
+namespace Application.Users.Events;
+
+internal class SendWelcomeEmailHandler(ILogger<SendWelcomeEmailHandler> logger)
+    : IDomainEventHandler<UserRegisteredDomainEvent>
+{
+    private readonly ILogger<SendWelcomeEmailHandler> _logger = logger;
+
+    public Task Handle(UserRegisteredDomainEvent domainEvent, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Sending welcome email to user with ID: {UserId}", domainEvent.UserId);
+        return Task.CompletedTask;
+    }
+}
+```
+
+### Step 3: Register in DI
+
+```csharp
+// Application/DependencyInjection.cs (excerpt)
+services.AddScoped<IDomainEventHandler<UserRegisteredDomainEvent>, SendWelcomeEmailHandler>();
+services.AddScoped<IDomainEventsDispatcher, DomainEventsDispatcher>();
+```
+
+Command and query handlers are registered with Scrutor; domain event handlers are registered explicitly.
+
+### Step 4: Dispatch after persistence
+
+Inject `IDomainEventsDispatcher` into the command handler and call `DispatchAsync` **after** `SaveChangesAsync` succeeds (see [Creating a Command](#creating-a-command)). See [Design Patterns: Domain Events](../architecture/design_patterns.md#11-domain-events) for ordering and post-commit considerations.
+
 ## Best Practices Demonstrated
 
 1. **Separation of Concerns**: Each layer has clear responsibilities
@@ -1098,4 +1159,5 @@ HTTP 400 Bad Request with ProblemDetails
 8. **Mediator Pattern**: Use mediator to decouple endpoints from handlers
 9. **Pipeline Behaviors**: Use behaviors for cross-cutting concerns (validation, logging)
 10. **Early Validation**: Use validators to provide fast feedback and prevent invalid data from reaching handlers
+11. **Domain Events**: Dispatch side effects after successful persistence; keep handlers out of the mediator pipeline unless you intentionally unify them
 

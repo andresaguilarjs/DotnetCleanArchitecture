@@ -249,3 +249,4 @@ __pycache__/
 scripts/
 
 obj/
+.vscode/

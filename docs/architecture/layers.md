@@ -68,6 +68,11 @@ Located in `Domain/Abstractions/ValueObjects/` and entity-specific `ValueObjects
 - **Entity-specific interfaces**: Located in `Domain/Entities/{Entity}/Interfaces/`
   - Example: `IUserService`, `IUserCommandRepository`, `IUserQueryRepository`
 
+- **Domain events (contracts)**:
+  - **IDomainEvent**: Marker interface for something that occurred in the domain that other parts of the application may react to
+  - **`IDomainEventHandler<TDomainEvent>`**: Handles a specific event type asynchronously
+  - **IDomainEventsDispatcher**: Dispatches a sequence of events to their registered handlers
+
 ### Design Principles
 - No dependencies on other layers
 - Pure business logic
@@ -128,6 +133,15 @@ Located in `Application/Behaviors/`:
 - **ICommandHandler<TCommand, TResult>**: Command handler interface
 - **IQueryHandler<TQuery, TResponse>**: Query handler interface
 - **IPipelineBehavior<TRequest, TResponse>**: Pipeline behavior interface
+
+#### Domain events
+Concrete event types and handlers live in **Application** (not in Domain), while the **contracts** above remain in Domain. Typical layout:
+
+- `Application/{Feature}/Events/` — event records (implementing `IDomainEvent`) and `IDomainEventHandler<T>` implementations
+
+**Example**: After `CreateUserCommandHandler` successfully persists a user (`SaveChangesAsync`), it dispatches `UserRegisteredDomainEvent` via `IDomainEventsDispatcher`. Handlers (for example `SendWelcomeEmailHandler`) run as side effects; they are **not** part of the mediator pipeline.
+
+Register `IDomainEventsDispatcher` and each `IDomainEventHandler<T>` in `Application/DependencyInjection.cs` (manual registration is used for domain event handlers today, unlike Scrutor scanning for command/query handlers).
 
 ### Design Principles
 - Depends only on Domain layer
@@ -289,6 +303,12 @@ This ensures that:
 HTTP Request → WebApi Endpoint → Application Handler → Domain Service → Infrastructure Repository → Database
 ```
 
+After a successful write, when the handler commits the unit of work:
+
+```
+… → Application Handler → IUnitOfWork.SaveChangesAsync → IDomainEventsDispatcher.DispatchAsync → IDomainEventHandler<T> (side effects)
+```
+
 ### Response Flow
 ```
 Database → Infrastructure Repository → Domain Entity → Application DTO → WebApi Endpoint → HTTP Response
@@ -323,6 +343,7 @@ The application uses two complementary error handling approaches:
    - Use DTOs, not domain entities
    - Pipeline behaviors for cross-cutting concerns
    - One handler per command/query
+   - Register `IDomainEventsDispatcher` and each `IDomainEventHandler<T>` in DI; dispatch events after persistence succeeds; domain event handlers are separate from the mediator pipeline
 
 3. **Infrastructure Layer**:
    - Implement domain interfaces

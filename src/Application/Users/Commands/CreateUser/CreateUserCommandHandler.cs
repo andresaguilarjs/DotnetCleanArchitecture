@@ -1,4 +1,5 @@
 using Application.Abstractions.Messaging;
+using Application.Users.Events;
 using Domain.Common;
 using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
@@ -9,7 +10,9 @@ namespace Application.Users.Commands.CreateUser;
 public sealed class CreateUserCommandHandler(
     IUnitOfWork unitOfWork,
     IUserCommandRepository userCommandRepository,
-    IUserService userService) : ICommandHandler<CreateUserCommand, UserDTO>
+    IUserService userService,
+    IDomainEventsDispatcher domainEventsDispatcher
+    ) : ICommandHandler<CreateUserCommand, UserDTO>
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IUserCommandRepository _userCommandRepository = userCommandRepository;
@@ -30,6 +33,13 @@ public sealed class CreateUserCommandHandler(
         {
             return Result<UserDTO>.Failure(result.Errors);
         }
+
+        UserRegisteredDomainEvent userRegisteredEvent = new()
+        {
+            UserId = user.Value.Id
+        };
+
+        await domainEventsDispatcher.DispatchAsync([userRegisteredEvent], cancellationToken);
 
         return Result<UserDTO>.Success(UserMapper.Map(user));
     }

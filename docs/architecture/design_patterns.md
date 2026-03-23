@@ -16,6 +16,7 @@ The project implements several design patterns to achieve separation of concerns
 8. **Global Exception Handling Pattern**
 9. **Value Object Pattern**
 10. **Factory Pattern**
+11. **Domain Events**
 
 ## 1. CQRS (Command Query Responsibility Segregation)
 
@@ -923,6 +924,69 @@ public sealed class UserEntity : BaseEntity
 ### Location
 - Used in all domain entities: `Domain/Entities/`
 
+## 11. Domain Events
+
+### Purpose
+Decouple the core use case (command handler) from side effects such as notifications, emails, or integration with other bounded contexts. The handler stays focused on persistence and returning a result; reactions to “something happened” are implemented separately.
+
+### Contracts vs. implementations
+- **Domain** defines the contracts: `IDomainEvent`, `IDomainEventHandler<TDomainEvent>`, and `IDomainEventsDispatcher`.
+- **Application** defines concrete event types (records implementing `IDomainEvent`) and handler classes, typically under `Application/{Feature}/Events/`.
+
+This keeps the dependency rule: Domain stays free of feature-specific types while Application can express use-case-level occurrences.
+
+### Dispatcher
+`IDomainEventsDispatcher` is implemented in Application (`Application/Common/DomainEventsDispatcher.cs`). It resolves all registered `IDomainEventHandler<T>` for each event’s runtime type from the service provider and invokes `Handle` for each handler.
+
+### Registration (manual vs. Scrutor)
+Command and query handlers are registered automatically via **Scrutor** assembly scanning. Domain event handlers are registered **explicitly** alongside the dispatcher:
+
+```csharp
+// Application/DependencyInjection.cs (excerpt)
+
+// Events
+services.AddScoped<IDomainEventHandler<UserRegisteredDomainEvent>, SendWelcomeEmailHandler>();
+services.AddScoped<IDomainEventsDispatcher, DomainEventsDispatcher>();
+```
+
+When you add a new event type, add a matching `AddScoped<IDomainEventHandler<YourEvent>, YourHandler>()` line.
+
+### Example
+**Event** (`Application/Users/Events/UserRegisteredDomainEvent.cs`):
+
+```csharp
+internal sealed record UserRegisteredDomainEvent : IDomainEvent
+{
+    public Guid UserId { get; init; }
+}
+```
+
+**Handler** (`Application/Users/Events/SendWelcomeEmailHandler.cs`) — placeholder that logs a welcome message:
+
+```csharp
+internal class SendWelcomeEmailHandler(ILogger<SendWelcomeEmailHandler> logger)
+    : IDomainEventHandler<UserRegisteredDomainEvent>
+{
+    private readonly ILogger<SendWelcomeEmailHandler> _logger = logger;
+
+    public Task Handle(UserRegisteredDomainEvent domainEvent, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Sending welcome email to user with ID: {UserId}", domainEvent.UserId);
+        return Task.CompletedTask;
+    }
+}
+```
+
+**When to dispatch**: `CreateUserCommandHandler` calls `DispatchAsync` only after `SaveChangesAsync` succeeds, so handlers run after the **transaction has committed**.
+
+### Post-commit caveat
+If a domain event handler throws or fails after persistence, the data change is already committed. Decide how you want to handle failures (retry, outbox, compensation) for production; this sample documents the ordering and does not add transactional guarantees across the database and handler side effects.
+
+### Location
+- Contracts: `Domain/Interfaces/IDomainEvent.cs`, `IDomainEventHandler.cs`, `IDomainEventsDispatcher.cs`
+- Dispatcher: `Application/Common/DomainEventsDispatcher.cs`
+- Example event and handler: `Application/Users/Events/`
+
 ## Best Practices
 
 1. **One handler per command/query**: Keep handlers focused
@@ -932,4 +996,5 @@ public sealed class UserEntity : BaseEntity
 5. **Factory methods**: Use static factory methods for entity creation
 6. **Pipeline behaviors**: Use for cross-cutting concerns, not business logic
 7. **Unit of Work**: Always use for coordinating multiple repository operations
+8. **Domain events**: Dispatch after successful `SaveChanges`; register each `IDomainEventHandler<T>` explicitly; keep handlers separate from the mediator pipeline
 

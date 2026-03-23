@@ -15,6 +15,7 @@ This project serves as a practical example of Clean Architecture principles, fea
 - **FastEndpoints** - Modern, performant API framework
 - **Entity Framework Core** - Code-first database approach
 - **Scalar** - Beautiful API documentation
+- **Domain Events** - Dispatch side effects after successful persistence (e.g. welcome flow via handlers)
 
 ## Features
 
@@ -27,6 +28,7 @@ This project serves as a practical example of Clean Architecture principles, fea
 - ✅ Value object validation
 - ✅ Unit of Work pattern
 - ✅ Domain services
+- ✅ Domain events (dispatcher + handlers; dispatched after `SaveChanges`)
 
 ## Requirements
 
@@ -107,6 +109,7 @@ Comprehensive documentation is available in the `docs/` folder:
 - DTOs and mappers
 - Application services
 - Pipeline behaviors
+- Domain events: use cases may call `IDomainEventsDispatcher` after persistence succeeds (see [Design Patterns](docs/architecture/design_patterns.md))
 - Depends only on Domain
 
 ### Infrastructure Layer
@@ -132,6 +135,7 @@ Comprehensive documentation is available in the `docs/` folder:
 - **Unit of Work**: Transaction management
 - **Value Object**: Domain validation
 - **Factory Pattern**: Entity creation
+- **Domain Events**: Dispatcher resolves `IDomainEventHandler<T>` for side effects after commit
 
 ## Technologies
 
