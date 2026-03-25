@@ -30,6 +30,7 @@ The project follows Clean Architecture principles with four distinct layers, eac
   - `CreatedAt` (DateTime)
   - `LastUpdatedAt` (DateTime)
   - `IsDeleted` (bool) - for soft delete support
+  - `DomainEvents` — in-memory list of `IDomainEvent` raised via `RaiseDomainEvent`; cleared by the unit of work after a successful save
   - `Delete()` - abstract method for entity-specific deletion logic
 
 - **UserEntity**: User domain entity with value objects:
@@ -72,6 +73,7 @@ Located in `Domain/Abstractions/ValueObjects/` and entity-specific `ValueObjects
   - **IDomainEvent**: Marker interface for something that occurred in the domain that other parts of the application may react to
   - **`IDomainEventHandler<TDomainEvent>`**: Handles a specific event type asynchronously
   - **IDomainEventsDispatcher**: Dispatches a sequence of events to their registered handlers
+  - **BaseEntity** holds pending `IDomainEvent` instances until persistence succeeds; see Infrastructure **UnitOfWork** for collection and dispatch
 
 ### Design Principles
 - No dependencies on other layers
@@ -139,9 +141,9 @@ Concrete event types and handlers live in **Application** (not in Domain), while
 
 - `Application/{Feature}/Events/` — event records (implementing `IDomainEvent`) and `IDomainEventHandler<T>` implementations
 
-**Example**: After `CreateUserCommandHandler` successfully persists a user (`SaveChangesAsync`), it dispatches `UserRegisteredDomainEvent` via `IDomainEventsDispatcher`. Handlers (for example `SendWelcomeEmailHandler`) run as side effects; they are **not** part of the mediator pipeline.
+Use cases raise events on entities with `RaiseDomainEvent` (for example `UserRegisteredDomainEvent` on a `UserEntity`) **before** `IUnitOfWork.SaveChangesAsync`. **Infrastructure** `UnitOfWork` collects events from tracked entities, persists changes, then dispatches to handlers (for example `SendWelcomeEmailHandler`). Handlers run as side effects and are **not** part of the mediator pipeline.
 
-Register `IDomainEventsDispatcher` and each `IDomainEventHandler<T>` in `Application/DependencyInjection.cs` (manual registration is used for domain event handlers today, unlike Scrutor scanning for command/query handlers).
+Register `IDomainEventsDispatcher` once in `Application/DependencyInjection.cs`. Register `IDomainEventHandler<T>` implementations via **Scrutor** assembly scanning (same pattern as command and query handlers).
 
 ### Design Principles
 - Depends only on Domain layer
@@ -179,12 +181,15 @@ Located in `Infrastructure/Database/Repositories/`:
 - **UnitOfWork**: Implements `IUnitOfWork`
 - Manages database transactions
 - Coordinates SaveChanges across repositories
+- Before `SaveChangesAsync`, collects `IDomainEvent` instances from tracked `BaseEntity` instances (Added, Modified, or Deleted)
+- After a successful save, clears in-memory domain events on tracked entities and calls `IDomainEventsDispatcher.DispatchAsync` so handlers run after commit
 
 #### Entity Configurations
 Located in `Infrastructure/Database/Configurations/`:
 - Entity Framework Core configuration classes
 - Maps domain entities to database tables
 - Configures relationships and constraints
+- `DomainEvents` is not mapped to columns — use `builder.Ignore(x => x.DomainEvents)` per entity type
 
 #### Health Checks
 Located in `Infrastructure/HealthChecks/`:
@@ -303,7 +308,7 @@ This ensures that:
 HTTP Request → WebApi Endpoint → Application Handler → Domain Service → Infrastructure Repository → Database
 ```
 
-After a successful write, when the handler commits the unit of work:
+After a successful write, when the handler commits the unit of work (events were raised on entities earlier in the handler; dispatch runs inside `SaveChangesAsync` after the database commit succeeds):
 
 ```
 … → Application Handler → IUnitOfWork.SaveChangesAsync → IDomainEventsDispatcher.DispatchAsync → IDomainEventHandler<T> (side effects)
@@ -343,7 +348,7 @@ The application uses two complementary error handling approaches:
    - Use DTOs, not domain entities
    - Pipeline behaviors for cross-cutting concerns
    - One handler per command/query
-   - Register `IDomainEventsDispatcher` and each `IDomainEventHandler<T>` in DI; dispatch events after persistence succeeds; domain event handlers are separate from the mediator pipeline
+   - Register `IDomainEventsDispatcher` once and discover `IDomainEventHandler<T>` via Scrutor; raise events on `BaseEntity` before `SaveChangesAsync`; `UnitOfWork` dispatches after persistence succeeds; domain event handlers are separate from the mediator pipeline
 
 3. **Infrastructure Layer**:
    - Implement domain interfaces

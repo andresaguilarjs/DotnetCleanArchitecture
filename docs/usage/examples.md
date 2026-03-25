@@ -51,15 +51,13 @@ using Application.Users.Events;
 using Domain.Common;
 using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
-using Domain.Interfaces;
 
 namespace Application.Users.Commands.CreateUser;
 
 public sealed class CreateUserCommandHandler(
     IUnitOfWork unitOfWork,
     IUserCommandRepository userCommandRepository,
-    IUserService userService,
-    IDomainEventsDispatcher domainEventsDispatcher
+    IUserService userService
     ) : ICommandHandler<CreateUserCommand, UserDTO>
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
@@ -79,18 +77,16 @@ public sealed class CreateUserCommandHandler(
         }
 
         await _userCommandRepository.AddAsync(user);
+        user.Value.RaiseDomainEvent(new UserRegisteredDomainEvent()
+        {
+            UserId = user.Value.Id
+        });
+
         Result result = await _unitOfWork.SaveChangesAsync(cancellationToken);
         if (result.IsFailure)
         {
             return Result<UserDTO>.Failure(result.Errors);
         }
-
-        UserRegisteredDomainEvent userRegisteredEvent = new()
-        {
-            UserId = user.Value.Id
-        };
-
-        await domainEventsDispatcher.DispatchAsync([userRegisteredEvent], cancellationToken);
 
         return Result<UserDTO>.Success(UserMapper.Map(user));
     }
@@ -1095,7 +1091,7 @@ HTTP 400 Bad Request with ProblemDetails
 
 ## Domain Events
 
-Domain events let a use case notify other code about something that already happened, without putting all side effects inside the command handler. Contracts (`IDomainEvent`, `IDomainEventHandler<>`, `IDomainEventsDispatcher`) live in **Domain**; event records and handlers live under **Application** (for example `Application/Users/Events/`).
+Domain events let a use case notify other code about something that already happened, without putting all side effects inside the command handler. Contracts (`IDomainEvent`, `IDomainEventHandler<>`, `IDomainEventsDispatcher`) live in **Domain**; event records and handlers live under **Application** (for example `Application/Users/Events/`). Entities inherit `RaiseDomainEvent` from **`BaseEntity`**; **`UnitOfWork`** collects events from tracked entities, persists, then dispatches after a successful commit.
 
 ### Step 1: Define the event
 
@@ -1135,17 +1131,23 @@ internal class SendWelcomeEmailHandler(ILogger<SendWelcomeEmailHandler> logger)
 
 ### Step 3: Register in DI
 
+Register `IDomainEventsDispatcher` once. Register `IDomainEventHandler<>` implementations with **Scrutor** (same assembly scan as command and query handlers):
+
 ```csharp
 // Application/DependencyInjection.cs (excerpt)
-services.AddScoped<IDomainEventHandler<UserRegisteredDomainEvent>, SendWelcomeEmailHandler>();
 services.AddScoped<IDomainEventsDispatcher, DomainEventsDispatcher>();
+
+services.Scan(scan => scan.FromAssembliesOf(typeof(DependencyInjection))
+    // ... command handlers, query handlers ...
+    .AddClasses(classes => classes.AssignableTo(typeof(IDomainEventHandler<>)), publicOnly: false)
+        .AsImplementedInterfaces()
+        .WithScopedLifetime()
+);
 ```
 
-Command and query handlers are registered with Scrutor; domain event handlers are registered explicitly.
+### Step 4: Raise on the entity; persistence dispatches
 
-### Step 4: Dispatch after persistence
-
-Inject `IDomainEventsDispatcher` into the command handler and call `DispatchAsync` **after** `SaveChangesAsync` succeeds (see [Creating a Command](#creating-a-command)). See [Design Patterns: Domain Events](../architecture/design_patterns.md#11-domain-events) for ordering and post-commit considerations.
+Call `RaiseDomainEvent` on the entity **before** `SaveChangesAsync` (see [Creating a Command](#creating-a-command)). Do not call `DispatchAsync` from the command handler. Map `DomainEvents` as ignored in EF (`builder.Ignore(x => x.DomainEvents)` in the entity configuration). See [Design Patterns: Domain Events](../architecture/design_patterns.md#11-domain-events) for ordering and post-commit considerations.
 
 ## Best Practices Demonstrated
 
@@ -1159,5 +1161,5 @@ Inject `IDomainEventsDispatcher` into the command handler and call `DispatchAsyn
 8. **Mediator Pattern**: Use mediator to decouple endpoints from handlers
 9. **Pipeline Behaviors**: Use behaviors for cross-cutting concerns (validation, logging)
 10. **Early Validation**: Use validators to provide fast feedback and prevent invalid data from reaching handlers
-11. **Domain Events**: Dispatch side effects after successful persistence; keep handlers out of the mediator pipeline unless you intentionally unify them
+11. **Domain events**: Raise on `BaseEntity` before `SaveChanges`; let `UnitOfWork` dispatch after successful persistence; keep handlers out of the mediator pipeline unless you intentionally unify them
 

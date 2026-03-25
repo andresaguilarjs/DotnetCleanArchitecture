@@ -1,21 +1,16 @@
 using Domain.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
-using System.Collections.Concurrent;
-using System.Reflection;
 
 namespace Application.Common;
 
 internal class DomainEventsDispatcher(IServiceProvider serviceProvider) : IDomainEventsDispatcher
 {
-    private readonly ConcurrentDictionary<(Type, Type), Type> _handlerTypeCache = new();
-    private readonly ConcurrentDictionary<Type, MethodInfo> _handleMethodCache = new();
-
     public async Task DispatchAsync(IEnumerable<IDomainEvent> domainEvents, CancellationToken cancellationToken = default)
     {
+        using IServiceScope scope = serviceProvider.CreateScope();
+
         foreach (IDomainEvent domainEvent in domainEvents)
         {
-            using IServiceScope scope = serviceProvider.CreateScope();
-
             Type domainEventType = domainEvent.GetType();
             Type handlerType = typeof(IDomainEventHandler<>)
                 .MakeGenericType(domainEventType);

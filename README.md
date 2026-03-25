@@ -109,7 +109,7 @@ Comprehensive documentation is available in the `docs/` folder:
 - DTOs and mappers
 - Application services
 - Pipeline behaviors
-- Domain events: use cases may call `IDomainEventsDispatcher` after persistence succeeds (see [Design Patterns](docs/architecture/design_patterns.md))
+- Domain events: entities raise `IDomainEvent` instances on `BaseEntity`; `UnitOfWork` dispatches handlers after persistence succeeds (see [Design Patterns](docs/architecture/design_patterns.md))
 - Depends only on Domain
 
 ### Infrastructure Layer
@@ -135,7 +135,7 @@ Comprehensive documentation is available in the `docs/` folder:
 - **Unit of Work**: Transaction management
 - **Value Object**: Domain validation
 - **Factory Pattern**: Entity creation
-- **Domain Events**: Dispatcher resolves `IDomainEventHandler<T>` for side effects after commit
+- **Domain Events**: Raise on entities; `UnitOfWork` invokes `IDomainEventsDispatcher` so `IDomainEventHandler<T>` run after commit
 
 ## Technologies
 

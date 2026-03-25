@@ -10,8 +10,7 @@ namespace Application.Users.Commands.CreateUser;
 public sealed class CreateUserCommandHandler(
     IUnitOfWork unitOfWork,
     IUserCommandRepository userCommandRepository,
-    IUserService userService,
-    IDomainEventsDispatcher domainEventsDispatcher
+    IUserService userService
     ) : ICommandHandler<CreateUserCommand, UserDTO>
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
@@ -28,19 +27,17 @@ public sealed class CreateUserCommandHandler(
         }
 
         await _userCommandRepository.AddAsync(user);
+        user.Value.RaiseDomainEvent(new UserRegisteredDomainEvent()
+        {
+            UserId = user.Value.Id
+        });
+
         Result result = await _unitOfWork.SaveChangesAsync(cancellationToken);
         if (result.IsFailure)
         {
             return Result<UserDTO>.Failure(result.Errors);
         }
-
-        UserRegisteredDomainEvent userRegisteredEvent = new()
-        {
-            UserId = user.Value.Id
-        };
-
-        await domainEventsDispatcher.DispatchAsync([userRegisteredEvent], cancellationToken);
-
+        
         return Result<UserDTO>.Success(UserMapper.Map(user));
     }
 }

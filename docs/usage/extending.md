@@ -16,9 +16,10 @@ See [Code Examples](./examples.md) for step-by-step samples.
 Use this when a write operation should trigger side effects (notifications, integration, etc.) without bloating the command handler.
 
 1. **Contracts** are already in Domain (`IDomainEvent`, `IDomainEventHandler<>`, `IDomainEventsDispatcher`); add a record under `Application/{Feature}/Events/` implementing `IDomainEvent`.
-2. **Handler**: Implement `IDomainEventHandler<TYourEvent>` in the same feature folder.
-3. **Registration**: In `Application/DependencyInjection.cs`, add `services.AddScoped<IDomainEventHandler<TYourEvent>, YourHandler>()` (and ensure `IDomainEventsDispatcher` remains registered once).
-4. **Dispatch**: From the command handler, after `SaveChangesAsync` succeeds, call `IDomainEventsDispatcher.DispatchAsync(...)`.
+2. **Handler**: Implement `IDomainEventHandler<TYourEvent>` in the same feature folder. It is registered automatically by **Scrutor** (same scan as command/query handlers); ensure `IDomainEventsDispatcher` remains registered once in `Application/DependencyInjection.cs`.
+3. **Raise events**: From the command handler, call `RaiseDomainEvent` on the relevant `BaseEntity` **before** `IUnitOfWork.SaveChangesAsync`. Do not inject `IDomainEventsDispatcher` in the handler.
+4. **Persistence**: `UnitOfWork.SaveChangesAsync` collects events from tracked entities, saves, then dispatches handlers after a successful commit.
+5. **EF** (for new mapped entities): In `Infrastructure/Database/Configurations/`, add `builder.Ignore(x => x.DomainEvents)` so domain events are not persisted.
 
 Full walkthrough: [Examples: Domain Events](./examples.md#domain-events). Behavior and caveats: [Design Patterns: Domain Events](../architecture/design_patterns.md#11-domain-events).
 

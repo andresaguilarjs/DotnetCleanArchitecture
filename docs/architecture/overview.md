@@ -14,7 +14,7 @@ This project is an implementation of Clean Architecture in C#, demonstrating var
 - **Pipeline behaviors**: Cross-cutting concerns like logging handled via pipeline behaviors
 - **Health checks**: Built-in database health monitoring
 - **Soft delete support**: Entities support soft deletion with audit trails
-- **Domain events**: After a successful unit of work commit, handlers run for side effects (for example, a welcome flow when a user is created)
+- **Domain events**: Entities record events on `BaseEntity`; after a successful unit of work commit, the dispatcher runs handlers for side effects (for example, a welcome flow when a user is created)
 
 ## Architecture Overview
 ### Clean Architecture
@@ -40,7 +40,7 @@ This project implements several design patterns:
 - **Pipeline Behavior Pattern**: Cross-cutting concerns (logging, validation) handled via pipeline behaviors
 - **Unit of Work Pattern**: Transaction management via `IUnitOfWork` interface
 - **Value Object Pattern**: Immutable value objects for domain concepts (Email, FirstName, LastName, etc.)
-- **Domain Events**: Contracts in Domain (`IDomainEvent`, `IDomainEventHandler<>`, `IDomainEventsDispatcher`); concrete events and handlers in Application; dispatcher invokes handlers after persistence
+- **Domain Events**: Contracts in Domain (`IDomainEvent`, `IDomainEventHandler<>`, `IDomainEventsDispatcher`); aggregates raise events via `BaseEntity`; concrete events and handlers in Application; `UnitOfWork` dispatches to handlers after a successful save
 
 ## Technologies and Tools
 - **Language**: C# 12

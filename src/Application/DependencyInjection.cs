@@ -22,6 +22,9 @@ public static class DependencyInjection
         // Mediator
         services.AddScoped<IMediator, Mediator>();
 
+        // Domain Events Dispatcher
+        services.AddScoped<IDomainEventsDispatcher, DomainEventsDispatcher>();
+
         // Behaviors - Order matters! Validation should run before logging
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>));
@@ -47,11 +50,10 @@ public static class DependencyInjection
             .AddClasses(classes => classes.AssignableTo(typeof(IQueryHandler<,>)), publicOnly: false)
                 .AsImplementedInterfaces()
                 .WithScopedLifetime()
+            .AddClasses(classes => classes.AssignableTo(typeof(IDomainEventHandler<>)), publicOnly: false)
+                .AsImplementedInterfaces()
+                .WithScopedLifetime()
         );
-
-        // Events
-        services.AddScoped<IDomainEventHandler<UserRegisteredDomainEvent>, SendWelcomeEmailHandler>();
-        services.AddScoped<IDomainEventsDispatcher, DomainEventsDispatcher>();
 
         return services;
     }

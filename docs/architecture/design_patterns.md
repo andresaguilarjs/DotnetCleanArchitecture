@@ -927,29 +927,37 @@ public sealed class UserEntity : BaseEntity
 ## 11. Domain Events
 
 ### Purpose
-Decouple the core use case (command handler) from side effects such as notifications, emails, or integration with other bounded contexts. The handler stays focused on persistence and returning a result; reactions to “something happened” are implemented separately.
+Decouple the core use case (command handler) from side effects such as notifications, emails, or integration with other bounded contexts. The handler stays focused on orchestration and returning a result; reactions to “something happened” are implemented separately.
 
 ### Contracts vs. implementations
-- **Domain** defines the contracts: `IDomainEvent`, `IDomainEventHandler<TDomainEvent>`, and `IDomainEventsDispatcher`.
+- **Domain** defines the contracts: `IDomainEvent`, `IDomainEventHandler<TDomainEvent>`, and `IDomainEventsDispatcher`. `BaseEntity` provides a `DomainEvents` collection plus `RaiseDomainEvent` and `ClearDomainEvents` so aggregates can record what occurred before persistence.
 - **Application** defines concrete event types (records implementing `IDomainEvent`) and handler classes, typically under `Application/{Feature}/Events/`.
 
 This keeps the dependency rule: Domain stays free of feature-specific types while Application can express use-case-level occurrences.
 
 ### Dispatcher
-`IDomainEventsDispatcher` is implemented in Application (`Application/Common/DomainEventsDispatcher.cs`). It resolves all registered `IDomainEventHandler<T>` for each event’s runtime type from the service provider and invokes `Handle` for each handler.
+`IDomainEventsDispatcher` is implemented in Application (`Application/Common/DomainEventsDispatcher.cs`). For each batch of events, it creates one DI scope and resolves all registered `IDomainEventHandler<T>` for each event’s runtime type from the service provider, then invokes `Handle` for each handler.
 
-### Registration (manual vs. Scrutor)
-Command and query handlers are registered automatically via **Scrutor** assembly scanning. Domain event handlers are registered **explicitly** alongside the dispatcher:
+### Registration
+`IDomainEventsDispatcher` is registered once in `Application/DependencyInjection.cs`. Domain event handlers are registered the same way as command and query handlers: **Scrutor** scans the Application assembly for classes assignable to `IDomainEventHandler<>` and registers them as scoped. Adding a new handler class implementing `IDomainEventHandler<TYourEvent>` does not require a manual `AddScoped` line.
 
 ```csharp
 // Application/DependencyInjection.cs (excerpt)
 
-// Events
-services.AddScoped<IDomainEventHandler<UserRegisteredDomainEvent>, SendWelcomeEmailHandler>();
 services.AddScoped<IDomainEventsDispatcher, DomainEventsDispatcher>();
+
+services.Scan(scan => scan.FromAssembliesOf(typeof(DependencyInjection))
+    // ... validators, command handlers, query handlers ...
+    .AddClasses(classes => classes.AssignableTo(typeof(IDomainEventHandler<>)), publicOnly: false)
+        .AsImplementedInterfaces()
+        .WithScopedLifetime()
+);
 ```
 
-When you add a new event type, add a matching `AddScoped<IDomainEventHandler<YourEvent>, YourHandler>()` line.
+### Raising events and when they run
+Use cases call `RaiseDomainEvent` on a `BaseEntity` (typically after the entity is in a meaningful state and before or alongside scheduling persistence). **Infrastructure** `UnitOfWork.SaveChangesAsync` collects events from all tracked `BaseEntity` instances in Added, Modified, or Deleted state, calls EF `SaveChangesAsync`, then—only after a successful save—clears those in-memory event lists and calls `IDomainEventsDispatcher.DispatchAsync`. Command handlers do not inject the dispatcher or call `DispatchAsync` directly.
+
+Map `DomainEvents` as not stored in the database: in each EF entity configuration, use `builder.Ignore(x => x.DomainEvents)`.
 
 ### Example
 **Event** (`Application/Users/Events/UserRegisteredDomainEvent.cs`):
@@ -977,15 +985,18 @@ internal class SendWelcomeEmailHandler(ILogger<SendWelcomeEmailHandler> logger)
 }
 ```
 
-**When to dispatch**: `CreateUserCommandHandler` calls `DispatchAsync` only after `SaveChangesAsync` succeeds, so handlers run after the **transaction has committed**.
+**Raising from a use case** (before `SaveChangesAsync`): e.g. `user.Value.RaiseDomainEvent(new UserRegisteredDomainEvent { UserId = user.Value.Id });`
 
 ### Post-commit caveat
 If a domain event handler throws or fails after persistence, the data change is already committed. Decide how you want to handle failures (retry, outbox, compensation) for production; this sample documents the ordering and does not add transactional guarantees across the database and handler side effects.
 
 ### Location
 - Contracts: `Domain/Interfaces/IDomainEvent.cs`, `IDomainEventHandler.cs`, `IDomainEventsDispatcher.cs`
+- Entity support: `Domain/Abstractions/BaseEntity.cs`
 - Dispatcher: `Application/Common/DomainEventsDispatcher.cs`
+- Dispatch orchestration: `Infrastructure/Database/Common/UnitOfWork.cs`
 - Example event and handler: `Application/Users/Events/`
+- EF: ignore `DomainEvents` in `Infrastructure/Database/Configurations/` (e.g. `UserConfiguration.cs`)
 
 ## Best Practices
 
@@ -996,5 +1007,5 @@ If a domain event handler throws or fails after persistence, the data change is 
 5. **Factory methods**: Use static factory methods for entity creation
 6. **Pipeline behaviors**: Use for cross-cutting concerns, not business logic
 7. **Unit of Work**: Always use for coordinating multiple repository operations
-8. **Domain events**: Dispatch after successful `SaveChanges`; register each `IDomainEventHandler<T>` explicitly; keep handlers separate from the mediator pipeline
+8. **Domain events**: Raise on `BaseEntity` before `SaveChanges`; let `UnitOfWork` dispatch after a successful commit; register `IDomainEventsDispatcher` once and discover `IDomainEventHandler<T>` via Scrutor; keep handlers separate from the mediator pipeline
 

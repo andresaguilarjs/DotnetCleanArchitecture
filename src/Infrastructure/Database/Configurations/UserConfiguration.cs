@@ -33,5 +33,7 @@ public class UserConfiguration : IEntityTypeConfiguration<UserEntity>
         builder.Property(x => x.CreatedAt).IsRequired();
 
         builder.Property(x => x.LastUpdatedAt).IsRequired();
+
+        builder.Ignore(x => x.DomainEvents);
     }
 }

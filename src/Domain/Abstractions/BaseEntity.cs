@@ -1,4 +1,5 @@
-﻿namespace Domain.Abstractions;
+﻿using Domain.Interfaces;
+namespace Domain.Abstractions;
 
 /// <summary>
 /// Represents the base entity class for all entities in the domain.
@@ -16,6 +17,13 @@ public abstract class BaseEntity
     public DateTime CreatedAt { get; private set; }
 
     /// <summary>
+    /// Gets the collection of domain events that have been raised by the entity.
+    /// </summary>
+    /// <remarks>This collection is typically used to track events for eventual dispatch to external handlers
+    /// or systems. The collection is read-only and may be empty if no events have been raised.</remarks>
+    public List<IDomainEvent> DomainEvents { get; private set; } = new List<IDomainEvent>();
+
+    /// <summary>
     /// Contains the date and time when the entity was last updated.
     /// </summary>
     public DateTime LastUpdatedAt { get; private set; }
@@ -28,6 +36,18 @@ public abstract class BaseEntity
     public BaseEntity()
     {
         CreatedAt = DateTime.UtcNow;
+    }
+
+    public void RaiseDomainEvent(IDomainEvent domainEvent)
+    {
+        if (domainEvent is null)
+            return;
+        DomainEvents.Add(domainEvent);
+    }
+
+    public void ClearDomainEvents()
+    {
+        DomainEvents.Clear();
     }
 
     /// <summary>
