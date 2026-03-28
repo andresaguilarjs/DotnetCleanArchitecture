@@ -8,6 +8,7 @@ using WebApi.Exceptions;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.AddServiceDefaults();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
 builder.Services.AddFastEndpoints();
@@ -34,7 +35,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
-app.MapHealthChecks("/health");
 app.UseFastEndpoints();
+app.MapDefaultEndpoints();
 
 app.Run();

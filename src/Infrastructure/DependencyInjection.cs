@@ -32,7 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddHealthChecks()
-            .AddCheck<SqlHealthCheck>("Sql Health Check");
+            .AddCheck<SqlHealthCheck>("Database Health Check");
 
         return services;
     }

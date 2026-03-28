@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/aspire/">
+    <Project Path="aspire/Aspire.AppHost/Aspire.AppHost.csproj" Id="6b815441-dbf4-4595-a8d4-b067db9aabec" />
+    <Project Path="aspire/Aspire.ServiceDefaults/Aspire.ServiceDefaults.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Application/Application.csproj" />
     <Project Path="src/Domain/Domain.csproj" />
