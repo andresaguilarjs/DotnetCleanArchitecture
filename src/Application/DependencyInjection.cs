@@ -22,9 +22,6 @@ public static class DependencyInjection
         // Mediator
         services.AddScoped<IMediator, Mediator>();
 
-        // Domain Events Dispatcher
-        services.AddScoped<IDomainEventsDispatcher, DomainEventsDispatcher>();
-
         // Behaviors - Order matters! Validation should run before logging
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>));

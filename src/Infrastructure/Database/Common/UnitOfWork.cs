@@ -3,29 +3,34 @@ using Domain.Abstractions;
 using Domain.Common;
 using Domain.Interfaces;
 using Infrastructure.Database.DBContext;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Database.Common;
 
-public sealed class UnitOfWork(ApplicationDbContext context, ILogger<UnitOfWork> logger, IDomainEventsDispatcher domainEventsDispatcher) : IUnitOfWork
+public sealed class UnitOfWork(
+    ApplicationDbContext context,
+    ILogger<UnitOfWork> logger,
+    IPublishEndpoint publishEndpoint
+    ) : IUnitOfWork
 {
-    private readonly ApplicationDbContext _context = context;
-    private readonly ILogger<UnitOfWork> _logger = logger;
-    private readonly IDomainEventsDispatcher _domainEventsDispatcher = domainEventsDispatcher;
-
     public async Task<Result> SaveChangesAsync(CancellationToken cancellationToken)
     {
-        List<IDomainEvent> eventsToDispatch = CollectDomainEventsFromTrackedEntities();
-
+        List<IDomainEvent> eventsToPublish = CollectDomainEventsFromTrackedEntities();
         try
         {
-            await _context.SaveChangesAsync(cancellationToken);
+            foreach (IDomainEvent domainEvent in eventsToPublish)
+            {
+                await publishEndpoint.Publish(domainEvent, domainEvent.GetType(), cancellationToken);
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            _logger.LogWarning(ex, "Concurrency conflict occurred while saving changes to the database.");
+            logger.LogWarning(ex, "Concurrency conflict occurred while saving changes to the database.");
 
             return Result.Failure(new Error(
                 ErrorCode.Conflict,
@@ -37,7 +42,7 @@ public sealed class UnitOfWork(ApplicationDbContext context, ILogger<UnitOfWork>
         }
         catch (DbUpdateException ex)
         {
-            _logger.LogError(ex, "An error occurred while saving changes to the database.");
+            logger.LogError(ex, "An error occurred while saving changes to the database.");
 
             string message = ex.InnerException?.Message ?? ex.Message;
             if (message.Contains("UNIQUE") || message.Contains("duplicate key"))
@@ -51,14 +56,27 @@ public sealed class UnitOfWork(ApplicationDbContext context, ILogger<UnitOfWork>
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An error occurred while saving changes to the database.");
+            logger.LogError(ex, "An error occurred while saving changes to the database.");
             return Result.Failure(GenericErrors.SomethingWhenWrong());
         }
-
+        
         ClearDomainEventsOnTrackedEntities();
-        await _domainEventsDispatcher.DispatchAsync(eventsToDispatch, cancellationToken);
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Clears all domain events from tracked entities in the current context that are not in the detached state.
+    /// </summary>
+    /// <remarks>This method iterates over all tracked entities of type BaseEntity and removes any domain
+    /// events they contain. Entities that are detached from the context are ignored.</remarks>
+    private void ClearDomainEventsOnTrackedEntities()
+    {
+        foreach (EntityEntry<BaseEntity> entry in context.ChangeTracker.Entries<BaseEntity>())
+        {
+            if (entry.State is not EntityState.Detached)
+                entry.Entity.ClearDomainEvents();
+        }
     }
 
     /// <summary>
@@ -73,25 +91,11 @@ public sealed class UnitOfWork(ApplicationDbContext context, ILogger<UnitOfWork>
     private List<IDomainEvent> CollectDomainEventsFromTrackedEntities()
     {
         List<IDomainEvent> events = [];
-        foreach (EntityEntry<BaseEntity> entry in _context.ChangeTracker.Entries<BaseEntity>())
+        foreach (EntityEntry<BaseEntity> entry in context.ChangeTracker.Entries<BaseEntity>())
         {
             if (entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
                 events.AddRange(entry.Entity.DomainEvents);
         }
         return events;
-    }
-
-    /// <summary>
-    /// Clears all domain events from tracked entities in the current context that are not in the detached state.
-    /// </summary>
-    /// <remarks>This method iterates over all tracked entities of type BaseEntity and removes any domain
-    /// events they contain. Entities that are detached from the context are ignored.</remarks>
-    private void ClearDomainEventsOnTrackedEntities()
-    {
-        foreach (EntityEntry<BaseEntity> entry in _context.ChangeTracker.Entries<BaseEntity>())
-        {
-            if (entry.State is not EntityState.Detached)
-                entry.Entity.ClearDomainEvents();
-        }
     }
 }

@@ -1,9 +1,9 @@
 using Application.Abstractions.Messaging;
-using Application.Users.Events;
 using Domain.Common;
 using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
 using Domain.Interfaces;
+using Domain.Entities.Users.Events;
 
 namespace Application.Users.Commands.CreateUser;
 

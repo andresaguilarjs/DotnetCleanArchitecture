@@ -15,11 +15,12 @@ See [Code Examples](./examples.md) for step-by-step samples.
 
 Use this when a write operation should trigger side effects (notifications, integration, etc.) without bloating the command handler.
 
-1. **Contracts** are already in Domain (`IDomainEvent`, `IDomainEventHandler<>`, `IDomainEventsDispatcher`); add a record under `Application/{Feature}/Events/` implementing `IDomainEvent`.
-2. **Handler**: Implement `IDomainEventHandler<TYourEvent>` in the same feature folder. It is registered automatically by **Scrutor** (same scan as command/query handlers); ensure `IDomainEventsDispatcher` remains registered once in `Application/DependencyInjection.cs`.
-3. **Raise events**: From the command handler, call `RaiseDomainEvent` on the relevant `BaseEntity` **before** `IUnitOfWork.SaveChangesAsync`. Do not inject `IDomainEventsDispatcher` in the handler.
-4. **Persistence**: `UnitOfWork.SaveChangesAsync` collects events from tracked entities, saves, then dispatches handlers after a successful commit.
-5. **EF** (for new mapped entities): In `Infrastructure/Database/Configurations/`, add `builder.Ignore(x => x.DomainEvents)` so domain events are not persisted.
+1. **Contracts** are already in Domain (`IDomainEvent`, `IDomainEventHandler<>`). Add a **record** implementing `IDomainEvent` under **`Domain/Entities/{Aggregate}/Events/`** (or another Domain folder that fits your model).
+2. **Handler**: Implement `IDomainEventHandler<TYourEvent>` under **`Application/{Feature}/Events/`**. It is registered automatically by **Scrutor** (same scan as command/query handlers).
+3. **Consumer** (Infrastructure): Add an `IConsumer<TYourEvent>` in `Infrastructure/Messaging/...` that resolves `IDomainEventHandler<TYourEvent>` and calls `Handle`. Consumers are registered by MassTransit (`AddConsumers` on the Infrastructure assembly in `Infrastructure/DependencyInjection.cs`).
+4. **Raise events**: From the command handler, call `RaiseDomainEvent` on the relevant `BaseEntity` **before** `IUnitOfWork.SaveChangesAsync`. Do not inject `IPublishEndpoint` in the handler.
+5. **Persistence**: `UnitOfWork.SaveChangesAsync` collects events from tracked entities, publishes via MassTransit (EF transactional outbox), then saves so data and outbox rows commit together.
+6. **EF** (for new mapped entities): In `Infrastructure/Database/Configurations/`, add `builder.Ignore(x => x.DomainEvents)` so domain events are not persisted.
 
 Full walkthrough: [Examples: Domain Events](./examples.md#domain-events). Behavior and caveats: [Design Patterns: Domain Events](../architecture/design_patterns.md#11-domain-events).
 

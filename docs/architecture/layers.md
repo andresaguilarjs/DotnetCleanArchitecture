@@ -30,7 +30,7 @@ The project follows Clean Architecture principles with four distinct layers, eac
   - `CreatedAt` (DateTime)
   - `LastUpdatedAt` (DateTime)
   - `IsDeleted` (bool) - for soft delete support
-  - `DomainEvents` — in-memory list of `IDomainEvent` raised via `RaiseDomainEvent`; cleared by the unit of work after a successful save
+  - `DomainEvents` — in-memory list of `IDomainEvent` raised via `RaiseDomainEvent`; cleared by the unit of work after a successful `SaveChangesAsync` (after publish/outbox staging)
   - `Delete()` - abstract method for entity-specific deletion logic
 
 - **UserEntity**: User domain entity with value objects:
@@ -70,10 +70,9 @@ Located in `Domain/Abstractions/ValueObjects/` and entity-specific `ValueObjects
   - Example: `IUserService`, `IUserCommandRepository`, `IUserQueryRepository`
 
 - **Domain events (contracts)**:
-  - **IDomainEvent**: Marker interface for something that occurred in the domain that other parts of the application may react to
-  - **`IDomainEventHandler<TDomainEvent>`**: Handles a specific event type asynchronously
-  - **IDomainEventsDispatcher**: Dispatches a sequence of events to their registered handlers
-  - **BaseEntity** holds pending `IDomainEvent` instances until persistence succeeds; see Infrastructure **UnitOfWork** for collection and dispatch
+  - **IDomainEvent**: Marker interface for something that occurred in the domain that other parts of the system may react to
+  - **`IDomainEventHandler<TDomainEvent>`**: Application-level handler for a specific event type (invoked from Infrastructure MassTransit consumers)
+  - **BaseEntity** holds pending `IDomainEvent` instances until the unit of work runs; see Infrastructure **UnitOfWork** for collection, MassTransit publish (EF outbox), and persistence
 
 ### Design Principles
 - No dependencies on other layers
@@ -137,13 +136,11 @@ Located in `Application/Behaviors/`:
 - **IPipelineBehavior<TRequest, TResponse>**: Pipeline behavior interface
 
 #### Domain events
-Concrete event types and handlers live in **Application** (not in Domain), while the **contracts** above remain in Domain. Typical layout:
+Event **types** (records implementing `IDomainEvent`) live in **Domain** (for example under `Domain/Entities/{Aggregate}/Events/`). **`IDomainEventHandler<T>`** implementations live under **`Application/{Feature}/Events/`**. Use cases raise events on entities with `RaiseDomainEvent` (for example `UserRegisteredDomainEvent` on a `UserEntity`) **before** `IUnitOfWork.SaveChangesAsync`.
 
-- `Application/{Feature}/Events/` — event records (implementing `IDomainEvent`) and `IDomainEventHandler<T>` implementations
+**Infrastructure** `UnitOfWork` collects events from tracked entities, publishes them via MassTransit (`IPublishEndpoint`) so they are stored in the **EF transactional outbox**, then calls `SaveChangesAsync` so entity changes and outbox rows commit together. A MassTransit **consumer** in Infrastructure (for example `SendWelcomeEmailConsumer`) receives the message from RabbitMQ and calls the corresponding `IDomainEventHandler<T>` (for example `SendWelcomeEmailHandler`). Handler execution is asynchronous relative to the HTTP request and is **not** part of the mediator pipeline.
 
-Use cases raise events on entities with `RaiseDomainEvent` (for example `UserRegisteredDomainEvent` on a `UserEntity`) **before** `IUnitOfWork.SaveChangesAsync`. **Infrastructure** `UnitOfWork` collects events from tracked entities, persists changes, then dispatches to handlers (for example `SendWelcomeEmailHandler`). Handlers run as side effects and are **not** part of the mediator pipeline.
-
-Register `IDomainEventsDispatcher` once in `Application/DependencyInjection.cs`. Register `IDomainEventHandler<T>` implementations via **Scrutor** assembly scanning (same pattern as command and query handlers).
+Register `IDomainEventHandler<T>` implementations via **Scrutor** assembly scanning in `Application/DependencyInjection.cs` (same pattern as command and query handlers). MassTransit consumers are registered in `Infrastructure/DependencyInjection.cs` (`AddConsumers` on the Infrastructure assembly).
 
 ### Design Principles
 - Depends only on Domain layer
@@ -181,8 +178,12 @@ Located in `Infrastructure/Database/Repositories/`:
 - **UnitOfWork**: Implements `IUnitOfWork`
 - Manages database transactions
 - Coordinates SaveChanges across repositories
-- Before `SaveChangesAsync`, collects `IDomainEvent` instances from tracked `BaseEntity` instances (Added, Modified, or Deleted)
-- After a successful save, clears in-memory domain events on tracked entities and calls `IDomainEventsDispatcher.DispatchAsync` so handlers run after commit
+- Collects `IDomainEvent` instances from tracked `BaseEntity` instances (Added, Modified, or Deleted), publishes each via MassTransit (staged in the EF outbox), then calls `SaveChangesAsync` so persistence and outbox rows are atomic
+- After a successful save, clears in-memory domain events on tracked entities (broker delivery and consumer invocation happen asynchronously)
+
+#### Messaging (MassTransit)
+- **RabbitMQ** transport and **EF Core transactional outbox** configured in `Infrastructure/DependencyInjection.cs` (`AddEntityFrameworkOutbox`, `UseBusOutbox`)
+- **Consumers** (for example `Infrastructure/Messaging/User/SendWelcomeEmailConsumer`) implement `IConsumer<T>` where `T` is a domain event type and delegate to `IDomainEventHandler<T>`
 
 #### Entity Configurations
 Located in `Infrastructure/Database/Configurations/`:
@@ -200,7 +201,7 @@ Located in `Infrastructure/HealthChecks/`:
 Located in `Infrastructure/Migrations/`:
 - Entity Framework Core migrations
 - Database schema versioning
-- Includes initial migration and soft delete support migration
+- Includes initial migration, soft delete support, and MassTransit **outbox/inbox** entities (for reliable publish and consumer deduplication)
 
 ### Design Principles
 - Implements interfaces defined in Domain layer
@@ -308,10 +309,10 @@ This ensures that:
 HTTP Request → WebApi Endpoint → Application Handler → Domain Service → Infrastructure Repository → Database
 ```
 
-After a successful write, when the handler commits the unit of work (events were raised on entities earlier in the handler; dispatch runs inside `SaveChangesAsync` after the database commit succeeds):
+After a successful write, the handler calls `IUnitOfWork.SaveChangesAsync` (events were raised on entities earlier in the handler). Publishing and persistence are coordinated in the unit of work; handlers run when consumers process messages from the broker:
 
 ```
-… → Application Handler → IUnitOfWork.SaveChangesAsync → IDomainEventsDispatcher.DispatchAsync → IDomainEventHandler<T> (side effects)
+… → Application Handler → IUnitOfWork.SaveChangesAsync → MassTransit publish (EF outbox) + SaveChanges → (async) RabbitMQ → IConsumer<T> → IDomainEventHandler<T>
 ```
 
 ### Response Flow
@@ -348,7 +349,7 @@ The application uses two complementary error handling approaches:
    - Use DTOs, not domain entities
    - Pipeline behaviors for cross-cutting concerns
    - One handler per command/query
-   - Register `IDomainEventsDispatcher` once and discover `IDomainEventHandler<T>` via Scrutor; raise events on `BaseEntity` before `SaveChangesAsync`; `UnitOfWork` dispatches after persistence succeeds; domain event handlers are separate from the mediator pipeline
+   - Discover `IDomainEventHandler<T>` via Scrutor; raise events on `BaseEntity` before `SaveChangesAsync`; `UnitOfWork` publishes via MassTransit outbox and persists in one transaction; domain event handlers are invoked by consumers and are separate from the mediator pipeline
 
 3. **Infrastructure Layer**:
    - Implement domain interfaces

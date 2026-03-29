@@ -1,4 +1,5 @@
 ﻿using Domain.Interfaces;
+using Domain.Entities.Users.Events;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Users.Events;

@@ -14,7 +14,7 @@ This project is an implementation of Clean Architecture in C#, demonstrating var
 - **Pipeline behaviors**: Cross-cutting concerns like logging handled via pipeline behaviors
 - **Health checks**: Built-in database health monitoring
 - **Soft delete support**: Entities support soft deletion with audit trails
-- **Domain events**: Entities record events on `BaseEntity`; after a successful unit of work commit, the dispatcher runs handlers for side effects (for example, a welcome flow when a user is created)
+- **Domain events**: Entities record events on `BaseEntity`; `UnitOfWork` publishes them via MassTransit with an EF Core transactional outbox; MassTransit consumers invoke `IDomainEventHandler<T>` for side effects (for example, a welcome flow when a user is created)
 
 ## Architecture Overview
 ### Clean Architecture
@@ -27,7 +27,7 @@ The project is organized into four main layers:
 
 1. **Domain Layer** (`src/Domain`): Contains the core business logic, entities, value objects, and domain interfaces. This layer has no dependencies on other layers.
 2. **Application Layer** (`src/Application`): Contains application-specific logic, use cases (commands and queries), DTOs, and application services. Depends only on the Domain layer.
-3. **Infrastructure Layer** (`src/Infrastructure`): Handles external dependencies like database access (Entity Framework Core), repositories implementation, and health checks. Depends on Domain and Application layers.
+3. **Infrastructure Layer** (`src/Infrastructure`): Handles external dependencies like database access (Entity Framework Core), repositories, MassTransit (RabbitMQ, EF outbox, consumers), and health checks. Depends on Domain and Application layers.
 4. **WebApi Layer** (`src/WebApi`): The presentation layer that handles HTTP requests, endpoints (using FastEndpoints), and API documentation. Depends on all other layers.
 
 ## Design Patterns
@@ -40,7 +40,7 @@ This project implements several design patterns:
 - **Pipeline Behavior Pattern**: Cross-cutting concerns (logging, validation) handled via pipeline behaviors
 - **Unit of Work Pattern**: Transaction management via `IUnitOfWork` interface
 - **Value Object Pattern**: Immutable value objects for domain concepts (Email, FirstName, LastName, etc.)
-- **Domain Events**: Contracts in Domain (`IDomainEvent`, `IDomainEventHandler<>`, `IDomainEventsDispatcher`); aggregates raise events via `BaseEntity`; concrete events and handlers in Application; `UnitOfWork` dispatches to handlers after a successful save
+- **Domain Events**: Contracts in Domain (`IDomainEvent`, `IDomainEventHandler<>`); event types (e.g. records) live in Domain; handlers in Application; aggregates raise events via `BaseEntity`; Infrastructure publishes via MassTransit/EF outbox and processes messages with `IConsumer<T>` adapters that delegate to handlers
 
 ## Technologies and Tools
 - **Language**: C# 12
@@ -52,6 +52,7 @@ This project implements several design patterns:
 - **API Documentation**: Scalar 2.11.1 (OpenAPI/Swagger alternative)
 - **Health Checks**: Microsoft.Extensions.Diagnostics.HealthChecks
 - **Dependency Injection**: Built-in Microsoft.Extensions.DependencyInjection
+- **Messaging**: MassTransit with RabbitMQ transport and Entity Framework Core transactional outbox
 
 ## Project Structure
 ```
@@ -66,6 +67,7 @@ src/
 ### Prerequisites
 - .NET SDK 10.0 or later
 - SQL Server database (or Docker container)
+- RabbitMQ (or use the Aspire AppHost to run RabbitMQ alongside the API)
 - Visual Studio Code, Visual Studio, or Rider IDE
 
 For detailed setup instructions, see [Getting Started Guide](../usage/getting_started.md).

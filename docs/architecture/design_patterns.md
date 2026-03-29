@@ -927,24 +927,26 @@ public sealed class UserEntity : BaseEntity
 ## 11. Domain Events
 
 ### Purpose
-Decouple the core use case (command handler) from side effects such as notifications, emails, or integration with other bounded contexts. The handler stays focused on orchestration and returning a result; reactions to “something happened” are implemented separately.
+Decouple the core use case (command handler) from side effects such as notifications, emails, or integration with other bounded contexts. The handler stays focused on orchestration and returning a result; reactions to “something happened” are implemented separately and delivered through the message broker.
 
 ### Contracts vs. implementations
-- **Domain** defines the contracts: `IDomainEvent`, `IDomainEventHandler<TDomainEvent>`, and `IDomainEventsDispatcher`. `BaseEntity` provides a `DomainEvents` collection plus `RaiseDomainEvent` and `ClearDomainEvents` so aggregates can record what occurred before persistence.
-- **Application** defines concrete event types (records implementing `IDomainEvent`) and handler classes, typically under `Application/{Feature}/Events/`.
+- **Domain** defines the contracts `IDomainEvent` and `IDomainEventHandler<TDomainEvent>`, plus concrete **event types** (records implementing `IDomainEvent`) that are published to the bus—for example `Domain/Entities/User/Events/UserRegisteredDomainEvent.cs` with namespace `Domain.Entities.Users.Events`. `BaseEntity` provides a `DomainEvents` collection plus `RaiseDomainEvent` and `ClearDomainEvents` so aggregates can record what occurred before persistence.
+- **Application** defines `IDomainEventHandler<T>` implementations, typically under `Application/{Feature}/Events/`.
+- **Infrastructure** configures **MassTransit** (RabbitMQ transport, EF Core **transactional outbox**), publishes from `UnitOfWork`, and hosts **`IConsumer<T>`** classes that resolve the corresponding `IDomainEventHandler<T>` and call `Handle`.
 
-This keeps the dependency rule: Domain stays free of feature-specific types while Application can express use-case-level occurrences.
+This keeps the dependency rule: Application depends only on Domain; Infrastructure references both for wiring.
 
-### Dispatcher
-`IDomainEventsDispatcher` is implemented in Application (`Application/Common/DomainEventsDispatcher.cs`). For each batch of events, it creates one DI scope and resolves all registered `IDomainEventHandler<T>` for each event’s runtime type from the service provider, then invokes `Handle` for each handler.
+### Publishing and outbox
+`UnitOfWork.SaveChangesAsync` collects domain events from tracked `BaseEntity` instances, publishes each event via **`IPublishEndpoint.Publish`** (MassTransit stages outbound messages in the **EF outbox**), then calls **`SaveChangesAsync`** on the DbContext so **entity state and outbox rows commit in one transaction**. After a successful save, in-memory `DomainEvents` lists are cleared on tracked entities. A background MassTransit component forwards staged messages to RabbitMQ (`UseBusOutbox`).
+
+Command handlers do not inject `IPublishEndpoint` directly; publishing is centralized in the unit of work.
 
 ### Registration
-`IDomainEventsDispatcher` is registered once in `Application/DependencyInjection.cs`. Domain event handlers are registered the same way as command and query handlers: **Scrutor** scans the Application assembly for classes assignable to `IDomainEventHandler<>` and registers them as scoped. Adding a new handler class implementing `IDomainEventHandler<TYourEvent>` does not require a manual `AddScoped` line.
+- **Handlers**: In `Application/DependencyInjection.cs`, **Scrutor** scans the Application assembly for classes assignable to `IDomainEventHandler<>` and registers them as scoped (same pattern as command and query handlers).
+- **MassTransit**: In `Infrastructure/DependencyInjection.cs`, `AddMassTransit` registers the EF outbox on `ApplicationDbContext`, RabbitMQ, and `AddConsumers` for the Infrastructure assembly so consumers are discovered automatically.
 
 ```csharp
-// Application/DependencyInjection.cs (excerpt)
-
-services.AddScoped<IDomainEventsDispatcher, DomainEventsDispatcher>();
+// Application/DependencyInjection.cs (excerpt) — handlers only; no dispatcher registration
 
 services.Scan(scan => scan.FromAssembliesOf(typeof(DependencyInjection))
     // ... validators, command handlers, query handlers ...
@@ -955,15 +957,17 @@ services.Scan(scan => scan.FromAssembliesOf(typeof(DependencyInjection))
 ```
 
 ### Raising events and when they run
-Use cases call `RaiseDomainEvent` on a `BaseEntity` (typically after the entity is in a meaningful state and before or alongside scheduling persistence). **Infrastructure** `UnitOfWork.SaveChangesAsync` collects events from all tracked `BaseEntity` instances in Added, Modified, or Deleted state, calls EF `SaveChangesAsync`, then—only after a successful save—clears those in-memory event lists and calls `IDomainEventsDispatcher.DispatchAsync`. Command handlers do not inject the dispatcher or call `DispatchAsync` directly.
+Use cases call `RaiseDomainEvent` on a `BaseEntity` before `IUnitOfWork.SaveChangesAsync`. Map `DomainEvents` as not stored in the database: in each EF entity configuration, use `builder.Ignore(x => x.DomainEvents)`.
 
-Map `DomainEvents` as not stored in the database: in each EF entity configuration, use `builder.Ignore(x => x.DomainEvents)`.
+Handler code runs **later**, when a consumer processes the message—not in the same call stack as the command handler. That is **eventual consistency** between the database commit and the side effect.
 
 ### Example
-**Event** (`Application/Users/Events/UserRegisteredDomainEvent.cs`):
+**Event** (`Domain/Entities/User/Events/UserRegisteredDomainEvent.cs`):
 
 ```csharp
-internal sealed record UserRegisteredDomainEvent : IDomainEvent
+namespace Domain.Entities.Users.Events;
+
+public sealed record UserRegisteredDomainEvent : IDomainEvent
 {
     public Guid UserId { get; init; }
 }
@@ -985,18 +989,31 @@ internal class SendWelcomeEmailHandler(ILogger<SendWelcomeEmailHandler> logger)
 }
 ```
 
+**Consumer** (`Infrastructure/Messaging/User/SendWelcomeEmailConsumer.cs`) — bridges the message to the handler:
+
+```csharp
+public class SendWelcomeEmailConsumer(IDomainEventHandler<UserRegisteredDomainEvent> domainEventHandler)
+    : IConsumer<UserRegisteredDomainEvent>
+{
+    public Task Consume(ConsumeContext<UserRegisteredDomainEvent> context)
+        => domainEventHandler.Handle(context.Message, context.CancellationToken);
+}
+```
+
 **Raising from a use case** (before `SaveChangesAsync`): e.g. `user.Value.RaiseDomainEvent(new UserRegisteredDomainEvent { UserId = user.Value.Id });`
 
-### Post-commit caveat
-If a domain event handler throws or fails after persistence, the data change is already committed. Decide how you want to handle failures (retry, outbox, compensation) for production; this sample documents the ordering and does not add transactional guarantees across the database and handler side effects.
+### Reliability and failure handling
+The **transactional outbox** avoids losing messages if the API process crashes after the database commits but before a raw publish would have completed: messages are written to SQL Server in the same transaction as domain data. If a **consumer** throws, MassTransit/RabbitMQ retry and error transport behavior apply; the originating transaction is already committed, so design idempotent handlers and compensations as needed.
 
 ### Location
-- Contracts: `Domain/Interfaces/IDomainEvent.cs`, `IDomainEventHandler.cs`, `IDomainEventsDispatcher.cs`
+- Contracts: `Domain/Interfaces/IDomainEvent.cs`, `IDomainEventHandler.cs`
 - Entity support: `Domain/Abstractions/BaseEntity.cs`
-- Dispatcher: `Application/Common/DomainEventsDispatcher.cs`
-- Dispatch orchestration: `Infrastructure/Database/Common/UnitOfWork.cs`
-- Example event and handler: `Application/Users/Events/`
-- EF: ignore `DomainEvents` in `Infrastructure/Database/Configurations/` (e.g. `UserConfiguration.cs`)
+- Example event type: `Domain/Entities/User/Events/UserRegisteredDomainEvent.cs`
+- Example handler: `Application/Users/Events/SendWelcomeEmailHandler.cs`
+- Publish orchestration: `Infrastructure/Database/Common/UnitOfWork.cs`
+- MassTransit registration: `Infrastructure/DependencyInjection.cs`
+- Example consumer: `Infrastructure/Messaging/User/SendWelcomeEmailConsumer.cs`
+- EF: ignore `DomainEvents` in `Infrastructure/Database/Configurations/` (e.g. `UserConfiguration.cs`); outbox/inbox entities registered on `ApplicationDbContext`
 
 ## Best Practices
 
@@ -1007,5 +1024,5 @@ If a domain event handler throws or fails after persistence, the data change is 
 5. **Factory methods**: Use static factory methods for entity creation
 6. **Pipeline behaviors**: Use for cross-cutting concerns, not business logic
 7. **Unit of Work**: Always use for coordinating multiple repository operations
-8. **Domain events**: Raise on `BaseEntity` before `SaveChanges`; let `UnitOfWork` dispatch after a successful commit; register `IDomainEventsDispatcher` once and discover `IDomainEventHandler<T>` via Scrutor; keep handlers separate from the mediator pipeline
+8. **Domain events**: Raise on `BaseEntity` before `SaveChanges`; let `UnitOfWork` publish via MassTransit outbox; discover `IDomainEventHandler<T>` via Scrutor; add `IConsumer<T>` in Infrastructure when the event is published to the bus; keep handlers separate from the mediator pipeline
 

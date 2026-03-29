@@ -6,9 +6,9 @@ using WebApi;
 using WebApi.Exceptions;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceDefaults();
 
 // Add services to the container.
-builder.AddServiceDefaults();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
 builder.Services.AddFastEndpoints();

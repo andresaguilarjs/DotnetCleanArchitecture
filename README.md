@@ -15,7 +15,7 @@ This project serves as a practical example of Clean Architecture principles, fea
 - **FastEndpoints** - Modern, performant API framework
 - **Entity Framework Core** - Code-first database approach
 - **Scalar** - Beautiful API documentation
-- **Domain Events** - Dispatch side effects after successful persistence (e.g. welcome flow via handlers)
+- **Domain Events** - Events raised on aggregates; published via MassTransit with an EF Core transactional outbox; `IDomainEventHandler<T>` implementations run from MassTransit consumers (e.g. welcome flow)
 
 ## Features
 
@@ -28,12 +28,13 @@ This project serves as a practical example of Clean Architecture principles, fea
 - ✅ Value object validation
 - ✅ Unit of Work pattern
 - ✅ Domain services
-- ✅ Domain events (dispatcher + handlers; dispatched after `SaveChanges`)
+- ✅ Domain events (MassTransit + EF outbox + RabbitMQ; handlers invoked by consumers)
 
 ## Requirements
 
 - **.NET SDK 10.0** or later
 - **SQL Server** (or Docker for containerized SQL Server)
+- **RabbitMQ** (or run the included **.NET Aspire** AppHost, which provisions RabbitMQ and wires the API—see [Getting Started](docs/usage/getting_started.md))
 
 ## Quick Start
 
@@ -46,16 +47,19 @@ docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourStrong@Passw0rd" \
    -d mcr.microsoft.com/mssql/server:2022-latest
 ```
 
-### 2. Configure Connection String
+### 2. Configure Connection Strings
 
-Update `src/WebApi/appsettings.json` with your database connection:
+Update `src/WebApi/appsettings.json` (or user secrets / environment) with your database and RabbitMQ connections:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost,1433;Database=CleanArchitectureDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+    "DefaultConnection": "Server=localhost,1433;Database=CleanArchitectureDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;",
+    "rabbitmq": "amqp://guest:guest@localhost:5672"
   }
 }
 ```
+
+The `rabbitmq` URI must match your broker. See [Getting Started](docs/usage/getting_started.md) for Docker, Aspire, and troubleshooting.
 
 ### 3. Apply Migrations
 
@@ -109,13 +113,14 @@ Comprehensive documentation is available in the `docs/` folder:
 - DTOs and mappers
 - Application services
 - Pipeline behaviors
-- Domain events: entities raise `IDomainEvent` instances on `BaseEntity`; `UnitOfWork` dispatches handlers after persistence succeeds (see [Design Patterns](docs/architecture/design_patterns.md))
+- Domain events: entities raise `IDomainEvent` on `BaseEntity`; `UnitOfWork` publishes via MassTransit (EF outbox) and consumers invoke `IDomainEventHandler<T>` (see [Design Patterns](docs/architecture/design_patterns.md))
 - Depends only on Domain
 
 ### Infrastructure Layer
 - Entity Framework Core implementation
 - Repository implementations
-- Database context and migrations
+- Database context and migrations (including MassTransit outbox/inbox entities)
+- MassTransit (RabbitMQ transport, consumers, EF transactional outbox)
 - Health checks
 - Depends on Domain and Application
 
@@ -135,7 +140,7 @@ Comprehensive documentation is available in the `docs/` folder:
 - **Unit of Work**: Transaction management
 - **Value Object**: Domain validation
 - **Factory Pattern**: Entity creation
-- **Domain Events**: Raise on entities; `UnitOfWork` invokes `IDomainEventsDispatcher` so `IDomainEventHandler<T>` run after commit
+- **Domain Events**: Raise on entities; `UnitOfWork` publishes through the outbox; RabbitMQ delivers messages to consumers that call `IDomainEventHandler<T>`
 
 ## Technologies
 
@@ -144,7 +149,10 @@ Comprehensive documentation is available in the `docs/` folder:
 - **FastEndpoints 7.1.1**
 - **Entity Framework Core 10.0**
 - **SQL Server**
+- **MassTransit** (messaging, EF outbox)
+- **RabbitMQ**
 - **Scalar 2.11.1** (API documentation)
+- **.NET Aspire** (optional AppHost under `aspire/` for local orchestration)
 
 ## Development
 

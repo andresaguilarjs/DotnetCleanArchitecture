@@ -8,6 +8,7 @@ Before you begin, ensure you have the following installed:
 
 - **.NET SDK 10.0** or later ([Download](https://dotnet.microsoft.com/download))
 - **SQL Server** database (or Docker for running SQL Server in a container)
+- **RabbitMQ** (or Docker / the included **.NET Aspire** AppHost—see below)
 - **IDE** (Visual Studio, Visual Studio Code, or Rider)
 - **Git** (optional, for cloning the repository)
 
@@ -43,30 +44,49 @@ docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourStrong@Passw0rd" \
 
 Install SQL Server locally and create a new database named `CleanArchitectureDb` (or your preferred name).
 
-### 3. Configure Database Connection
+### 3. Configure Connection Strings
 
-Update the connection string in `src/WebApi/appsettings.json`:
+The API requires **SQL Server** and a **RabbitMQ** broker. Update `src/WebApi/appsettings.json`, **user secrets**, or environment variables with both connection strings:
 
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost,1433;Database=CleanArchitectureDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+    "DefaultConnection": "Server=localhost,1433;Database=CleanArchitectureDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;",
+    "rabbitmq": "amqp://guest:guest@localhost:5672"
   }
 }
 ```
 
-**For Docker**: Use the connection string above (adjust password if different).
+- **`rabbitmq`**: AMQP URI for MassTransit. Adjust host, port, user, and password to match your broker. The application throws at startup if this key is missing.
 
-**For Local SQL Server**: Update the connection string to match your local setup:
+**For SQL Server in Docker**: Use the `DefaultConnection` example above (adjust password if different).
+
+**For Local SQL Server**: For example:
+
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=CleanArchitectureDb;Integrated Security=true;TrustServerCertificate=True;"
+    "DefaultConnection": "Server=localhost;Database=CleanArchitectureDb;Integrated Security=true;TrustServerCertificate=True;",
+    "rabbitmq": "amqp://guest:guest@localhost:5672"
   }
 }
 ```
 
 **Security Note**: In production, store connection strings in secure configuration (Azure Key Vault, environment variables, etc.). The current setup is for development only.
+
+#### Run RabbitMQ locally
+
+**Option A — Docker**
+
+```bash
+docker run -d --hostname my-rabbit --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+```
+
+Then use `amqp://guest:guest@localhost:5672` unless you change defaults.
+
+**Option B — .NET Aspire AppHost**
+
+The repository includes `aspire/Aspire.AppHost`, which adds a RabbitMQ resource (with the management plugin) and references the Web API. Set the environment variables expected by the AppHost (`RABBITMQ_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`) as needed, then run the AppHost project so the API receives a `ConnectionStrings__rabbitmq` (or equivalent) reference from Aspire. See the AppHost project for details.
 
 ### 4. Apply Database Migrations
 
@@ -85,7 +105,7 @@ dotnet ef database update --project src/WebApi/WebApi.csproj
 
 This will:
 - Create the database if it doesn't exist
-- Apply all migrations to create tables (Users, Posts, Comments)
+- Apply all migrations to create tables (including domain tables and MassTransit **outbox/inbox** metadata used for messaging)
 
 ### 5. Build the Project
 
@@ -184,7 +204,16 @@ CleanArchitectureExample/
 
 ## Common Issues and Solutions
 
-### Issiue: Database Connecton Failed
+### Issue: Missing RabbitMQ connection string
+
+**Symptoms**: Startup fails with a message such as `Missing ConnectionStrings:rabbitmq` or invalid RabbitMQ configuration.
+
+**Solutions**:
+1. Add `ConnectionStrings:rabbitmq` to configuration (see [step 3](#3-configure-connection-strings)).
+2. Ensure RabbitMQ is running (`docker ps` if using Docker).
+3. Verify the AMQP URI matches your broker (host, port, credentials, virtual host).
+
+### Issue: Database Connection Failed
 
 **Symptoms**: Error message about database connection
 

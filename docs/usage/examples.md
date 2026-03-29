@@ -47,10 +47,10 @@ public sealed class CreateUserCommand : ICommand<UserDTO>
 ```csharp
 // Application/Users/Commands/CreateUser/CreateUserCommandHandler.cs
 using Application.Abstractions.Messaging;
-using Application.Users.Events;
 using Domain.Common;
 using Domain.Entities.User;
 using Domain.Entities.User.Interfaces;
+using Domain.Entities.Users.Events;
 
 namespace Application.Users.Commands.CreateUser;
 
@@ -1091,17 +1091,17 @@ HTTP 400 Bad Request with ProblemDetails
 
 ## Domain Events
 
-Domain events let a use case notify other code about something that already happened, without putting all side effects inside the command handler. Contracts (`IDomainEvent`, `IDomainEventHandler<>`, `IDomainEventsDispatcher`) live in **Domain**; event records and handlers live under **Application** (for example `Application/Users/Events/`). Entities inherit `RaiseDomainEvent` from **`BaseEntity`**; **`UnitOfWork`** collects events from tracked entities, persists, then dispatches after a successful commit.
+Domain events let a use case notify other code about something that already happened, without putting all side effects inside the command handler. Contracts (`IDomainEvent`, `IDomainEventHandler<>`) live in **Domain**; **event types** (records) live in **Domain** (for example `Domain/Entities/User/Events/`); **handlers** live under **Application** (for example `Application/Users/Events/`). Entities inherit `RaiseDomainEvent` from **`BaseEntity`**. **`UnitOfWork`** collects events from tracked entities, publishes them via **MassTransit** into the **EF transactional outbox**, then **`SaveChangesAsync`** commits domain data and outbox rows together. **MassTransit consumers** in Infrastructure receive messages from RabbitMQ and call **`IDomainEventHandler<T>`**.
 
 ### Step 1: Define the event
 
 ```csharp
-// Application/Users/Events/UserRegisteredDomainEvent.cs
+// Domain/Entities/User/Events/UserRegisteredDomainEvent.cs
 using Domain.Interfaces;
 
-namespace Application.Users.Events;
+namespace Domain.Entities.Users.Events;
 
-internal sealed record UserRegisteredDomainEvent : IDomainEvent
+public sealed record UserRegisteredDomainEvent : IDomainEvent
 {
     public Guid UserId { get; init; }
 }
@@ -1111,6 +1111,7 @@ internal sealed record UserRegisteredDomainEvent : IDomainEvent
 
 ```csharp
 // Application/Users/Events/SendWelcomeEmailHandler.cs
+using Domain.Entities.Users.Events;
 using Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -1129,14 +1130,12 @@ internal class SendWelcomeEmailHandler(ILogger<SendWelcomeEmailHandler> logger)
 }
 ```
 
-### Step 3: Register in DI
+### Step 3: Register handlers in DI
 
-Register `IDomainEventsDispatcher` once. Register `IDomainEventHandler<>` implementations with **Scrutor** (same assembly scan as command and query handlers):
+Register `IDomainEventHandler<>` implementations with **Scrutor** (same assembly scan as command and query handlers). There is no in-process dispatcher registration:
 
 ```csharp
 // Application/DependencyInjection.cs (excerpt)
-services.AddScoped<IDomainEventsDispatcher, DomainEventsDispatcher>();
-
 services.Scan(scan => scan.FromAssembliesOf(typeof(DependencyInjection))
     // ... command handlers, query handlers ...
     .AddClasses(classes => classes.AssignableTo(typeof(IDomainEventHandler<>)), publicOnly: false)
@@ -1145,9 +1144,31 @@ services.Scan(scan => scan.FromAssembliesOf(typeof(DependencyInjection))
 );
 ```
 
-### Step 4: Raise on the entity; persistence dispatches
+MassTransit (including RabbitMQ, EF outbox, and consumers) is registered in `Infrastructure/DependencyInjection.cs`.
 
-Call `RaiseDomainEvent` on the entity **before** `SaveChangesAsync` (see [Creating a Command](#creating-a-command)). Do not call `DispatchAsync` from the command handler. Map `DomainEvents` as ignored in EF (`builder.Ignore(x => x.DomainEvents)` in the entity configuration). See [Design Patterns: Domain Events](../architecture/design_patterns.md#11-domain-events) for ordering and post-commit considerations.
+### Step 4: Add a consumer (Infrastructure)
+
+Bridge the message type to your handler with `IConsumer<T>`:
+
+```csharp
+// Infrastructure/Messaging/User/SendWelcomeEmailConsumer.cs
+using Domain.Entities.Users.Events;
+using Domain.Interfaces;
+using MassTransit;
+
+namespace Infrastructure.Messaging.User;
+
+public class SendWelcomeEmailConsumer(IDomainEventHandler<UserRegisteredDomainEvent> domainEventHandler)
+    : IConsumer<UserRegisteredDomainEvent>
+{
+    public Task Consume(ConsumeContext<UserRegisteredDomainEvent> context)
+        => domainEventHandler.Handle(context.Message, context.CancellationToken);
+}
+```
+
+### Step 5: Raise on the entity; persistence publishes via outbox
+
+Call `RaiseDomainEvent` on the entity **before** `SaveChangesAsync` (see [Creating a Command](#creating-a-command)). Do not publish from the command handler yourself. Map `DomainEvents` as ignored in EF (`builder.Ignore(x => x.DomainEvents)` in the entity configuration). See [Design Patterns: Domain Events](../architecture/design_patterns.md#11-domain-events) for outbox behavior, eventual consistency, and failure handling.
 
 ## Best Practices Demonstrated
 
@@ -1161,5 +1182,5 @@ Call `RaiseDomainEvent` on the entity **before** `SaveChangesAsync` (see [Creati
 8. **Mediator Pattern**: Use mediator to decouple endpoints from handlers
 9. **Pipeline Behaviors**: Use behaviors for cross-cutting concerns (validation, logging)
 10. **Early Validation**: Use validators to provide fast feedback and prevent invalid data from reaching handlers
-11. **Domain events**: Raise on `BaseEntity` before `SaveChanges`; let `UnitOfWork` dispatch after successful persistence; keep handlers out of the mediator pipeline unless you intentionally unify them
+11. **Domain events**: Raise on `BaseEntity` before `SaveChanges`; let `UnitOfWork` publish via MassTransit outbox and keep `IDomainEventHandler<T>` out of the mediator pipeline (consumers invoke them asynchronously)
 

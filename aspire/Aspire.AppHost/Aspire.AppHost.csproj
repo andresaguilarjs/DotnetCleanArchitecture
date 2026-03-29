@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.1.0">
+<Project Sdk="Aspire.AppHost.Sdk/13.2.0">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -7,6 +7,10 @@
     <Nullable>enable</Nullable>
     <UserSecretsId>fe2df392-23fa-41e5-93d2-e8880f6dba0f</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.2.0" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\WebApi\WebApi.csproj" />
